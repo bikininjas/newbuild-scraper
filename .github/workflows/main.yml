@@ -34,4 +34,5 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add historique_prix.csv
           git diff --cached --quiet || git commit -m "Update price history"
+          git pull --rebase
           git push
