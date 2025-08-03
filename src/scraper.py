@@ -10,25 +10,30 @@ from utils import get_user_agent, clean_price
 PRICE = ".price"
 PRICE_LG = ".price-lg"
 PRODUCT_PRICE = ".product-price"
+OLD_PRICE = ".old-price"
+NEW_PRICE = ".new-price"
 
 
 def get_site_selector(url):
-    if "amazon." in url:
-        return [
-            ".a-price .a-offscreen",
-            "#priceblock_ourprice",
-            "#priceblock_dealprice",
-            ".a-price-whole",
-        ]
+    if "amazon.fr" in url:
+        return [".a-price-whole"]
     if "ldlc.com" in url:
-        return [PRICE, ".price__amount", PRICE_LG]
+        return [PRICE, NEW_PRICE, ".price__amount"]
     if "topachat.com" in url:
-        return [".prodPrice", PRODUCT_PRICE, PRICE]
+        return [".offer-price__price svelte-hgy1uf"]
     if "alternate.fr" in url:
-        return [PRICE, ".product-detail-price", PRICE_LG]
+        return [PRICE, ".product-detail-price"]
     if "materiel.net" in url:
-        return [PRODUCT_PRICE, PRICE, PRICE_LG]
-    return [PRICE, PRODUCT_PRICE, "#price", ".a-price-whole"]
+        return [".o-product__price", ".o-product__price o-product__price--promo"]
+    if "pccomponents.fr" in url:
+        return [".pdp-price-current-integer"]
+    if "grosbill.com" in url:
+        return [".p-3x"]
+    if "idealo.fr" in url:
+        return [".productOffers-listItemOfferPrice"]
+    if "bpm-power.com" in url:
+        return [".prezzoSchedaProd"]
+    return [PRICE, PRODUCT_PRICE, "#price", ".a-price-whole", ".price__amount", ".offer-price__price svelte-hgy1uf", ".product-detail-price", ".o-product__price", ".o-product__price o-product__price--promo", ".pdp-price-current-integer", ".p-3x", ".prezzoSchedaProd", ".productOffers-listItemOfferPrice"]
 
 
 def get_price_requests(url, site_selectors):
