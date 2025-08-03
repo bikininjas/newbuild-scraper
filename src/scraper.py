@@ -17,6 +17,8 @@ NEW_PRICE = ".new-price"
 def get_site_selector(url):
     if "amazon.fr" in url:
         return [".a-price-whole"]
+    if "caseking.de" in url:
+        return [".js-unit-price"]
     if "ldlc.com" in url:
         return [PRICE, NEW_PRICE, ".price__amount"]
     if "topachat.com" in url:
@@ -33,6 +35,8 @@ def get_site_selector(url):
         return [".productOffers-listItemOfferPrice"]
     if "bpm-power.com" in url:
         return [".prezzoSchedaProd"]
+    if "rueducommerce.fr" in url:
+        return [PRICE]
     return [PRICE, PRODUCT_PRICE, "#price"]
 
 
