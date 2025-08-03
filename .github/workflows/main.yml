@@ -19,6 +19,9 @@ jobs:
         run: pip install -r requirements.txt
       - name: Install Playwright
         run: pip install playwright
+      - name: Install Playwright dependencies (Ubuntu)
+        run: |
+          npx playwright install-deps
       - name: Install Playwright browsers
         run: python -m playwright install
       - name: Run scraper
