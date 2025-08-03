@@ -1,0 +1,6 @@
+# Latest compatible versions as of August 2025
+requests>=2.31.0
+beautifulsoup4>=4.12.3
+selenium>=4.15.2
+pandas>=2.2.2
+fake-useragent>=1.5.1
