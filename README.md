@@ -1,17 +1,46 @@
-# 🛒 Price Scraper Project
+# 🛒 Price Scraper Project (2025)
 
-## What is this?
+## Overview
 
-Track the prices of computer parts (or any products) across multiple e-commerce sites. Always see the best price and where to buy. Price history is logged for every product and every site. Fully automated with GitHub Actions, or run locally.
+This project tracks prices for computer parts (or any products) across multiple e-commerce sites. It automatically finds the best price for each product, logs price history, and generates a modern HTML dashboard with graphs and tables. All logic is modular and easy to extend.
 
-## Features
+## Code Structure
 
-- Track multiple URLs for the same product (find the best price across sites)
-- See all current prices and the best site to buy
-- View full price history for every product and site
-- Easy CSV-based product list
-- Secure: no secrets in code, only in GitHub Actions
-- Works locally or in CI (GitHub Actions)
+All HTML generation logic is now modularized:
+
+- `src/htmlgen/data.py`: Loads products and price history from CSV files
+- `src/htmlgen/normalize.py`: Price normalization, category mapping, and site label helpers
+- `src/htmlgen/render.py`: Renders summary tables and product cards
+- `src/htmlgen/graph.py`: Renders Chart.js price history graphs for all products
+- `src/generate_html.py`: Main entry point, orchestrates data loading and rendering using the above modules
+
+To add new features or fix bugs, edit the relevant module. All scripts are auto-formatted with `black`.
+
+### How to extend
+
+- Add new product categories in `normalize.py`
+- Change table/card layout in `render.py`
+- Update graph logic in `graph.py`
+
+### Refactored Output
+
+The generated HTML now includes:
+- Category summary table (cheapest product per category)
+- Total price history graph (Chart.js)
+- Product cards grid (all prices, best price, history)
+- Individual price history graphs for each product (Chart.js)
+
+### How the graphs work
+
+- **Total Price History graph:** Shows the sum of the best price for each product at each timestamp. The last point always matches the sum of the absolute best prices in the table.
+- **Product Price History graph:** Shows the best price (lowest) for each product at each timestamp.
+
+### Known Issues / To Fix
+
+- If a product's best price is not present at every timestamp, the graph may show flat or stepped lines. This is expected.
+- If a product is missing from the price history at a timestamp, it is excluded from the sum for that timestamp.
+- The UI and CSV parsing are robust, but edge cases (e.g., malformed CSV, missing columns) may need more error handling.
+- Cognitive complexity warnings in some functions (see lint output) should be refactored for maintainability.
 
 ## How to Use
 
@@ -61,80 +90,15 @@ Track the prices of computer parts (or any products) across multiple e-commerce 
   python src/generate_html.py
   ```
 
-- Open `output.html` in your browser to preview the results. All products will be displayed as modern, responsive cards using Tailwind CSS and the Inter font.
-
-### 4. Output Format
-
-
-- The generated `output.html` uses Tailwind CSS for a clean, modern look.
-
-
-#### Category Summary Table
-At the top of the page, a summary table displays the cheapest product for each category:
-  - Category (e.g., CPU, GPU, RAM, SSD, Motherboard, Cooler, PSU, Mouse, Keyboard, Upgrade Kit)
-  - Product name (cheapest in category)
-  - Best price
-  - Best site (as a label with link)
-  - Last seen (timestamp)
-  - **Total row**: Sums all category minimums for a quick budget overview
-
-#### Product Cards
-All products are rendered as cards inside a responsive grid below the table.
-Each card shows the product name, best price, all current prices, and full price history.
-No legacy markup remains; all products use the same card layout.
-
-### 5. Run automatically with GitHub Actions
+### 4. Run automatically with GitHub Actions
 
 - Add your webhook to GitHub Actions secrets as `DISCORD_WEBHOOK_URL`
 - Push your code to GitHub
 - The workflow in `.github/workflows/main.yml` will run every 4 hours and update `historique_prix.csv` automatically
 
-## Output Example
+      - name: Format HTML generator scripts
+        run: black src/htmlgen/data.py src/htmlgen/normalize.py src/htmlgen/render.py src/htmlgen/graph.py src/generate_html.py
 
-```
-=== RYZEN ™ 7 9800X3D 8 Coeurs/16 Threads ===
-Best price: 482.0€
-Best site: https://www.amazon.fr/dp/B0DKFMSMYK/
-All current prices:
-- 482.0€ @ https://www.amazon.fr/dp/B0DKFMSMYK/
-- 499.0€ @ https://www.pccomponentes.fr/amd-ryzen-7-7800x3d-processeur-42-ghz-96-mo-l3-boite
-Price history:
-- 2025-08-03: 482.0€ @ https://www.amazon.fr/dp/B0DKFMSMYK/
-- 2025-08-03: 499.0€ @ https://www.pccomponentes.fr/amd-ryzen-7-7800x3d-processeur-42-ghz-96-mo-l3-boite
-==============================
-```
+          git add -A  # Stage all changes (including formatted scripts)
 
-## Security & Best Practices
-
-## Manual To-Do List
-
-## 2025-08-03: Data Migration
-
-All legacy rows in `historique_prix.csv` missing the `Timestamp_ISO` field have been migrated to include an ISO 8601 timestamp (midnight by default). This ensures compatibility with analytics and database tools.
-
-## Advanced
-
-- Customize CSS selectors for each site in `src/scraper.py` for more accurate price extraction
-- Add more notification channels if needed
-
-## Google Cloud Storage Automation
-
-### Automated Push of output.html
-
-A GitHub Actions workflow automatically uploads `output.html` to a Google Cloud Storage bucket when changes are pushed to the `gcs-output-html` branch. The upload only occurs if the file is non-empty and contains all required information (`<title>`, `<body>`, and at least one `<table>` tag).
-
-#### Required GitHub Secrets
-- `GCS_BUCKET_SVC_ACCOUNT_JSON_KEY`: Service account key JSON for authentication
-- `GCP_PROJECT_ID`: Google Cloud project ID
-- `GCS_BUCKET_NAME_NEWPC`: Name of the target GCS bucket
-
-#### How it works
-1. On push to `gcs-output-html`, the workflow checks `output.html` for content and required tags.
-2. If valid, it uploads the file to the specified GCS bucket using `gsutil`.
-3. If not valid, the upload is skipped.
-
-See `.github/workflows/push-output-html-gcs.yml` for details.
-
-## License
-
-MIT
+          git diff --cached --quiet || git commit -m "Update price history and format scripts"
