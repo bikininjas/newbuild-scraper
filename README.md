@@ -55,7 +55,35 @@ Track the prices of computer parts (or any products) across multiple e-commerce 
 
 - See the best price, all prices, and price history for each product in your console
 
-### 4. Run automatically with GitHub Actions
+- To generate a modern HTML report with all products styled as Tailwind cards:
+
+  ```bash
+  python src/generate_html.py
+  ```
+
+- Open `output.html` in your browser to preview the results. All products will be displayed as modern, responsive cards using Tailwind CSS and the Inter font.
+
+### 4. Output Format
+
+
+- The generated `output.html` uses Tailwind CSS for a clean, modern look.
+
+
+#### Category Summary Table
+At the top of the page, a summary table displays the cheapest product for each category:
+  - Category (e.g., CPU, GPU, RAM, SSD, Motherboard, Cooler, PSU, Mouse, Keyboard, Upgrade Kit)
+  - Product name (cheapest in category)
+  - Best price
+  - Best site (as a label with link)
+  - Last seen (timestamp)
+  - **Total row**: Sums all category minimums for a quick budget overview
+
+#### Product Cards
+All products are rendered as cards inside a responsive grid below the table.
+Each card shows the product name, best price, all current prices, and full price history.
+No legacy markup remains; all products use the same card layout.
+
+### 5. Run automatically with GitHub Actions
 
 - Add your webhook to GitHub Actions secrets as `DISCORD_WEBHOOK_URL`
 - Push your code to GitHub
