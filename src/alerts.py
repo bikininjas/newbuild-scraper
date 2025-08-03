@@ -1,5 +1,7 @@
 import os
-WEBHOOK_URL = os.environ.get('DISCORD_WEBHOOK_URL')
+
+WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL")
+
 
 def send_discord_alert(product_name, url, old_price, new_price):
     percent_drop = ((old_price - new_price) / old_price) * 100 if old_price else 0
