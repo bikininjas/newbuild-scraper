@@ -33,7 +33,7 @@ def get_site_selector(url):
         return [".productOffers-listItemOfferPrice"]
     if "bpm-power.com" in url:
         return [".prezzoSchedaProd"]
-    return [PRICE, PRODUCT_PRICE, "#price", ".a-price-whole", ".price__amount", ".offer-price__price svelte-hgy1uf", ".product-detail-price", ".o-product__price", ".o-product__price o-product__price--promo", ".pdp-price-current-integer", ".p-3x", ".prezzoSchedaProd", ".productOffers-listItemOfferPrice"]
+    return [PRICE, PRODUCT_PRICE, "#price"]
 
 
 def get_price_requests(url, site_selectors):
