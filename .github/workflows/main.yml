@@ -29,11 +29,13 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: python src/main.py
-      - name: Commit price history
+      - name: Format HTML generator scripts
+        run: black src/htmlgen/data.py src/htmlgen/normalize.py src/htmlgen/render.py src/htmlgen/graph.py src/generate_html.py
+      - name: Commit price history and formatted scripts
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add -A  # Stage all changes
-          git diff --cached --quiet || git commit -m "Update price history"
+          git add -A  # Stage all changes (including formatted scripts)
+          git diff --cached --quiet || git commit -m "Update price history and format scripts"
           git pull --rebase
           git push
