@@ -27,7 +27,7 @@ jobs:
       - name: Run scraper
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: python main.py
+        run: python src/main.py
       - name: Commit price history
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"

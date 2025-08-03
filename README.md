@@ -50,7 +50,7 @@ Track the prices of computer parts (or any products) across multiple e-commerce 
 - Run the script:
 
   ```bash
-  python main.py
+  python src/main.py
   ```
 
 - See the best price, all prices, and price history for each product in your console
@@ -86,7 +86,7 @@ All legacy rows in `historique_prix.csv` missing the `Timestamp_ISO` field have 
 
 ## Advanced
 
-- Customize CSS selectors for each site in `main.py` for more accurate price extraction
+- Customize CSS selectors for each site in `src/scraper.py` for more accurate price extraction
 - Add more notification channels if needed
 
 ## Google Cloud Storage Automation
