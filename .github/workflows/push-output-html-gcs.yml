@@ -24,7 +24,7 @@ jobs:
           # Check for required info (example: <title>, <body>, and at least one <table>)
           grep -q '<title>' output.html || exit 1
           grep -q '<body>' output.html || exit 1
-          grep -q '<table' output.html || exit 1
+          grep -q '<ul' output.html || exit 1
 
       - name: Set up authentication
         id: 'auth'
