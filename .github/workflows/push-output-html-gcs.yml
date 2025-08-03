@@ -3,7 +3,7 @@ name: Push output.html to Google Cloud Storage
 on:
   push:
     branches:
-      - gcs-output-html
+      - master
     paths:
       - output.html
 
