@@ -1,0 +1,42 @@
+name: Push output.html to Google Cloud Storage
+
+on:
+  push:
+    branches:
+      - gcs-output-html
+    paths:
+      - output.html
+
+jobs:
+  upload-to-gcs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check output.html is non-empty and valid
+        id: check_output
+        run: |
+          if [ ! -s output.html ]; then
+            echo "output.html is empty. Skipping upload."
+            exit 1
+          fi
+          # Check for required info (example: <title>, <body>, and at least one <table>)
+          grep -q '<title>' output.html || exit 1
+          grep -q '<body>' output.html || exit 1
+          grep -q '<ul' output.html || exit 1
+
+      - name: Set up authentication
+        id: 'auth'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCS_BUCKET_SVC_ACCOUNT_JSON_KEY }}'
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2.1.5
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Upload output.html to GCS bucket
+        run: |
+          gsutil cp output.html gs://${{ secrets.GCS_BUCKET_NAME_NEWPC }}/output.html

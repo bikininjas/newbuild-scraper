@@ -50,7 +50,7 @@ Track the prices of computer parts (or any products) across multiple e-commerce 
 - Run the script:
 
   ```bash
-  python main.py
+  python src/main.py
   ```
 
 - See the best price, all prices, and price history for each product in your console
@@ -86,8 +86,26 @@ All legacy rows in `historique_prix.csv` missing the `Timestamp_ISO` field have 
 
 ## Advanced
 
-- Customize CSS selectors for each site in `main.py` for more accurate price extraction
+- Customize CSS selectors for each site in `src/scraper.py` for more accurate price extraction
 - Add more notification channels if needed
+
+## Google Cloud Storage Automation
+
+### Automated Push of output.html
+
+A GitHub Actions workflow automatically uploads `output.html` to a Google Cloud Storage bucket when changes are pushed to the `gcs-output-html` branch. The upload only occurs if the file is non-empty and contains all required information (`<title>`, `<body>`, and at least one `<table>` tag).
+
+#### Required GitHub Secrets
+- `GCS_BUCKET_SVC_ACCOUNT_JSON_KEY`: Service account key JSON for authentication
+- `GCP_PROJECT_ID`: Google Cloud project ID
+- `GCS_BUCKET_NAME_NEWPC`: Name of the target GCS bucket
+
+#### How it works
+1. On push to `gcs-output-html`, the workflow checks `output.html` for content and required tags.
+2. If valid, it uploads the file to the specified GCS bucket using `gsutil`.
+3. If not valid, the upload is skipped.
+
+See `.github/workflows/push-output-html-gcs.yml` for details.
 
 ## License
 
