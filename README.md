@@ -96,9 +96,9 @@ All legacy rows in `historique_prix.csv` missing the `Timestamp_ISO` field have 
 A GitHub Actions workflow automatically uploads `output.html` to a Google Cloud Storage bucket when changes are pushed to the `gcs-output-html` branch. The upload only occurs if the file is non-empty and contains all required information (`<title>`, `<body>`, and at least one `<table>` tag).
 
 #### Required GitHub Secrets
-- `GCP_SERVICE_ACCOUNT_KEY`: Service account key JSON for authentication
+- `GCS_BUCKET_SVC_ACCOUNT_JSON_KEY`: Service account key JSON for authentication
 - `GCP_PROJECT_ID`: Google Cloud project ID
-- `GCS_BUCKET_NAME`: Name of the target GCS bucket
+- `GCS_BUCKET_NAME_NEWPC`: Name of the target GCS bucket
 
 #### How it works
 1. On push to `gcs-output-html`, the workflow checks `output.html` for content and required tags.
