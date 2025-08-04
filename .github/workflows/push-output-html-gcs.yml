@@ -26,7 +26,7 @@ jobs:
             echo "output.html missing <title> tag."
             exit 1
           fi
-          if ! grep -q '<body>' output.html; then
+          if ! grep -qi '<body' output.html; then
             echo "output.html missing <body> tag."
             exit 1
           fi
