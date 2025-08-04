@@ -55,11 +55,9 @@ def get_price_requests(url, site_selectors):
             logging.warning(f"Non-200 status code for {url}: {resp.status_code}")
             return None
         soup = BeautifulSoup(resp.text, "html.parser")
-        # ...existing code...
         for selector in site_selectors:
             price_elem = soup.select_one(selector)
             if price_elem:
-                # ...existing code...
                 return clean_price(price_elem.get_text())
             else:
                 pass
@@ -132,7 +130,7 @@ def get_price_playwright(url, site_selectors):
                 page.wait_for_timeout(3000)
             content = page.content()
             soup = BeautifulSoup(content, "html.parser")
-            # ...existing code...
+
 
             def close_and_return(val):
                 browser.close()
