@@ -5,32 +5,8 @@ from htmlgen.graph import render_all_price_graphs
 import os
 
 
-def main():
-    products = load_products("produits.csv")
-    history = load_history("historique_prix.csv")
-
-    # Build product_prices: for each product, collect latest price per URL
+def build_product_prices(products, history):
     product_prices = {}
-    for name, urls in products.items():
-        entries = []
-        for url in urls:
-            rows = history[(history["Product_Name"] == name) & (history["URL"] == url)]
-            if not rows.empty:
-                if "Timestamp_ISO" in rows:
-                    rows = rows.sort_values(by="Timestamp_ISO", ascending=False)
-                else:
-                    rows = rows.sort_values(by="Date", ascending=False)
-                latest = rows.iloc[0]
-                # Filter out outlier/invalid prices (e.g., > 5000)
-                try:
-                    price_val = float(latest["Price"])
-                    if 0 < price_val < 5000:
-                        entries.append({"price": latest["Price"], "url": url})
-                except Exception:
-                    continue
-        if entries:
-            product_prices[name] = entries
-    # Build product_prices: for each product, collect latest valid normalized price per URL
     for name, urls in products.items():
         entries = []
         for url in urls:
@@ -48,8 +24,13 @@ def main():
                     continue
         if entries:
             product_prices[name] = entries
+    return product_prices
 
-
+def main():
+    products = load_products("produits.csv")
+    history = load_history("historique_prix.csv")
+    product_prices = build_product_prices(products, history)
+    generate_html(product_prices, history)
 def normalize_and_filter_prices(entries, name):
     valid_entries = []
     for entry in entries:
