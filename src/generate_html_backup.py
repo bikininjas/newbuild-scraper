@@ -1,11 +1,3 @@
-from htmlgen.data import load_products, load_history
-from htmlgen.normalize import normalize_price, get_category, get_site_label
-from htmlgen.render import render_summary_table, render_product_cards
-from htmlgen.graph import render_all_price_graphs
-import os
-import json
-
-
 def normalize_and_filter_prices(entries, name):
     valid_entries = []
     for entry in entries:
@@ -131,7 +123,7 @@ def _get_product_graph_datasets(product_min_prices, total_history):
                 "hidden": False,
             })
     datasets.append({
-        "label": "Prix Total (€)",
+        "label": "Total Price (€)",
         "data": [x["total"] for x in total_history],
         "fill": False,
         "borderColor": "#10b981",
@@ -152,33 +144,8 @@ def _render_html(category_best, history, product_prices, product_min_prices, tot
         "data": {"labels": formatted_labels, "datasets": product_graph_datasets},
         "options": {
             "responsive": True,
-            "plugins": {
-                "legend": {
-                    "display": True,
-                    "labels": {"color": "#e2e8f0", "font": {"size": 12}}
-                },
-                "title": {
-                    "display": True,
-                    "text": "Historique du prix total",
-                    "color": "#06b6d4",
-                    "font": {"size": 16, "weight": "bold"}
-                }
-            },
-            "scales": {
-                "x": {
-                    "ticks": {"color": "#94a3b8", "font": {"size": 10}},
-                    "grid": {"color": "rgba(148, 163, 184, 0.1)"}
-                },
-                "y": {
-                    "beginAtZero": False,
-                    "ticks": {"color": "#94a3b8", "font": {"size": 10}},
-                    "grid": {"color": "rgba(148, 163, 184, 0.1)"}
-                }
-            },
-            "elements": {
-                "point": {"hoverBackgroundColor": "#06b6d4"},
-                "line": {"borderCapStyle": "round"}
-            }
+            "plugins": {"legend": {"display": True}, "title": {"display": True, "text": "Total Price History"}},
+            "scales": {"y": {"beginAtZero": False}},
         },
     }
     chart_json = json.dumps(chart_config)
@@ -197,8 +164,7 @@ def _render_html(category_best, history, product_prices, product_min_prices, tot
         "    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); }",
         "    .main-content { width: 90vw; max-width: 1600px; margin: 0 auto; }",
         "    @media (max-width: 900px) { .main-content { width: 98vw; } }",
-        "    canvas { background-color: rgba(15, 23, 42, 0.95) !important; border-radius: 8px; }",
-        "    .chart-bg canvas { max-height: 180px !important; height: 180px !important; }",
+        "    canvas { max-height: 60px !important; height: 60px !important; background-color: rgba(15, 23, 42, 0.95) !important; border-radius: 8px; }",
         "    .hidden { display: none; }",
         "    .glass-card { background: rgba(15, 23, 42, 0.95) !important; backdrop-filter: blur(16px); border: 1px solid rgba(51, 65, 85, 0.4); }",
         "    .price-badge { background: linear-gradient(135deg, #059669 0%, #10b981 100%); }",
@@ -213,11 +179,6 @@ def _render_html(category_best, history, product_prices, product_min_prices, tot
         "    .chart-bg { background: rgba(15, 23, 42, 0.98) !important; border: 1px solid rgba(51, 65, 85, 0.3); }",
         "    * { box-sizing: border-box; }",
         "    html, body { background: #0f172a !important; }",
-        "    table { background: rgba(15, 23, 42, 0.95) !important; }",
-        "    thead tr { background: rgba(30, 41, 59, 0.9) !important; }",
-        "    tbody tr { background: rgba(15, 23, 42, 0.8) !important; }",
-        "    tbody tr:hover { background: rgba(30, 41, 59, 0.8) !important; }",
-        "    th, td { border-color: rgba(51, 65, 85, 0.4) !important; }",
         "  </style>",
         "</head>",
         '<body class="bg-slate-900 font-inter min-h-screen">',
@@ -225,7 +186,7 @@ def _render_html(category_best, history, product_prices, product_min_prices, tot
         '<h1 class="text-5xl font-extrabold text-center gradient-text mb-12 tracking-tight">Product Price Tracker</h1>',
         evolution_html,
         '<div id="total-warning"></div>',
-        '<div class="chart-container mt-8 mb-8"><h2 class="text-2xl font-bold text-center text-cyan-400 mb-6">Historique du prix total</h2><canvas id="total_price_chart" height="150"></canvas>'
+        '<div class="chart-container mt-8 mb-8"><h2 class="text-2xl font-bold text-center text-cyan-400 mb-6">Historique du prix total</h2><canvas id="total_price_chart" height="60"></canvas>'
         f"<script>\n"
         f'const ctx = document.getElementById("total_price_chart").getContext("2d");\n'
         f"new Chart(ctx, {chart_json});\n"
@@ -262,6 +223,138 @@ def _render_html(category_best, history, product_prices, product_min_prices, tot
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("\n".join(html))
     print(f"[generate_html.py] HTML file written to: {output_path}")
+# Helper functions for generate_html
+def _get_evolution_html(total_history):
+    if len(total_history) >= 2:
+        prev = total_history[-2]["total"]
+        curr = total_history[-1]["total"]
+        diff = round(curr - prev, 2)
+        if diff == 0:
+            return '<div class="text-center text-slate-500 font-semibold mb-2">No evolution</div>'
+        elif diff < 0:
+            return f'<div class="text-center text-green-600 font-semibold mb-2">▼ -{abs(diff):.2f}€ (moins cher)</div>'
+        else:
+            return f'<div class="text-center text-red-600 font-semibold mb-2">▲ +{diff:.2f}€ (plus cher)</div>'
+    return ""
+
+def _get_formatted_labels(total_history):
+    from datetime import datetime
+    def format_french_short(dtstr):
+        try:
+            if "T" in dtstr:
+                dt = datetime.fromisoformat(dtstr.split(".")[0])
+            else:
+                dt = datetime.strptime(dtstr, "%Y-%m-%d %H:%M:%S")
+            return dt.strftime("%d/%m/%Y - %H:%M")
+        except Exception:
+            return dtstr
+    return [format_french_short(x["timestamp"]) for x in total_history]
+
+def _get_product_graph_datasets(product_min_prices, total_history):
+    colors = [
+        "#0ea5e9", "#f59e42", "#e11d48", "#6366f1", "#16a34a", "#f43f5e", "#facc15", "#a3e635", "#14b8a6", "#f472b6",
+    ]
+    datasets = []
+    for idx, (name, data) in enumerate(product_min_prices.items()):
+        if data["timestamps"] and data["prices"]:
+            datasets.append({
+                "label": name,
+                "data": data["prices"],
+                "fill": False,
+                "borderColor": colors[idx % len(colors)],
+                "backgroundColor": colors[idx % len(colors)],
+                "borderWidth": 1,
+                "tension": 0.3,
+                "pointRadius": 0,
+                "hidden": False,
+            })
+    datasets.append({
+        "label": "Total Price (€)",
+        "data": [x["total"] for x in total_history],
+        "fill": False,
+        "borderColor": "#16a34a",
+        "backgroundColor": "#bbf7d0",
+        "borderWidth": 4,
+        "tension": 0.3,
+        "pointRadius": 2,
+        "order": 1,
+    })
+    return datasets
+
+def _render_html(category_best, history, product_prices, product_min_prices, total_history):
+    formatted_labels = _get_formatted_labels(total_history)
+    product_graph_datasets = _get_product_graph_datasets(product_min_prices, total_history)
+    chart_config = {
+        "type": "line",
+        "data": {"labels": formatted_labels, "datasets": product_graph_datasets},
+        "options": {
+            "responsive": True,
+            "plugins": {"legend": {"display": True}, "title": {"display": True, "text": "Total Price History"}},
+            "scales": {"y": {"beginAtZero": False}},
+        },
+    }
+    chart_json = json.dumps(chart_config)
+    evolution_html = _get_evolution_html(total_history)
+    html = [
+        "<!DOCTYPE html>",
+        '<html lang="en">',
+        "<head>",
+        '  <meta charset="UTF-8">',
+        '  <meta name="viewport" content="width=device-width, initial-scale=1.0">',
+        "  <title>Product Price Tracker</title>",
+        '  <script src="https://cdn.tailwindcss.com"></script>',
+        '  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>',
+        '  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">',
+        "  <style>body { font-family: 'Inter', sans-serif; } .main-content { width: 90vw; max-width: 1600px; margin: 0 auto; } @media (max-width: 900px) { .main-content { width: 98vw; } } .hidden { display: none; } </style>",
+        "</head>",
+        '<body class="bg-slate-50 font-inter">',
+        '<div class="main-content px-4 py-8">',
+        '<h1 class="text-4xl font-extrabold text-center text-slate-900 mb-10">Product Price Tracker</h1>',
+        evolution_html,
+        '<div id="total-warning"></div>',
+        '<div class="mt-8 mb-8"><h2 class="text-xl font-bold text-center text-cyan-700 mb-4">Total Price History</h2><canvas id="total_price_chart" height="120"></canvas>'
+        f"<script>\n"
+        f'const ctx = document.getElementById("total_price_chart").getContext("2d");\n'
+        f"new Chart(ctx, {chart_json});\n"
+        f"</script></div>",
+    ]
+    html.append(render_summary_table(category_best, history))
+    # Call render_product_cards - historical prices are now toggleable with buttons
+    html.append(render_product_cards(product_prices, history, product_min_prices))
+    
+    # Add JavaScript for toggle functionality
+    html.append('<script>')
+    html.append('function toggleHistory(historyId) {')
+    html.append('    const historyDiv = document.getElementById(historyId);')
+    html.append('    const icon = document.getElementById("icon-" + historyId);')
+    html.append('    const button = icon.parentElement;')
+    html.append('    ')
+    html.append('    if (historyDiv.classList.contains("hidden")) {')
+    html.append('        historyDiv.classList.remove("hidden");')
+    html.append('        icon.style.transform = "rotate(180deg)";')
+    html.append('        const textNode = Array.from(button.childNodes).find(node => node.nodeType === 3 && node.textContent.includes("Afficher"));')
+    html.append('        if (textNode) textNode.textContent = "Masquer l\'historique des prix";')
+    html.append('    } else {')
+    html.append('        historyDiv.classList.add("hidden");')
+    html.append('        icon.style.transform = "rotate(0deg)";')
+    html.append('        const textNode = Array.from(button.childNodes).find(node => node.nodeType === 3 && node.textContent.includes("Masquer"));')
+    html.append('        if (textNode) textNode.textContent = "Afficher l\'historique des prix";')
+    html.append('    }')
+    html.append('}')
+    html.append('</script>')
+    
+    html.append("</body></html>")
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    output_path = os.path.join(project_root, "output.html")
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(html))
+    print(f"[generate_html.py] HTML file written to: {output_path}")
+from htmlgen.data import load_products, load_history
+from htmlgen.normalize import normalize_price, get_category, get_site_label
+from htmlgen.render import render_summary_table, render_product_cards
+from htmlgen.graph import render_all_price_graphs
+import os
+import json
 
 
 def _get_latest_price_for_url(history, name, url):
@@ -312,6 +405,7 @@ def generate_html(product_prices, history):
         timestamps,
     )
     _render_html(category_best, history, product_prices, product_min_prices, total_history)
+    # ...existing code...
 
 
 def main():

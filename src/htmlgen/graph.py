@@ -1,40 +1,62 @@
 def render_price_history_graph_from_series(timestamps, prices, product_name):
     import json
+    from datetime import datetime
+
+    def format_french_date(dtstr):
+        """Format timestamp to French date style"""
+        MONTHS_FR = [
+            "janv", "févr", "mars", "avr", "mai", "juin", 
+            "juil", "août", "sept", "oct", "nov", "déc"
+        ]
+        try:
+            if "T" in dtstr:
+                dt = datetime.fromisoformat(dtstr.split(".")[0])
+            else:
+                dt = datetime.strptime(dtstr, "%Y-%m-%d %H:%M:%S")
+            month = MONTHS_FR[dt.month - 1]
+            return f"{dt.day:02d} {month} {dt.year} - {dt.hour:02d}:{dt.minute:02d}"
+        except Exception:
+            return dtstr
 
     def get_price_evolution_indicator(prices):
         if len(prices) < 2 or prices[-1] is None or prices[-2] is None:
             return (
-                '<span class="text-gray-400" aria-label="No change">–</span>',
+                '<span class="text-slate-400" aria-label="No change">–</span>',
                 "No change",
             )
         last, prev = prices[-1], prices[-2]
         if last < prev:
             return (
-                '<span class="text-green-600" aria-label="Price down">↓</span>',
+                '<span class="text-green-400" aria-label="Price down">↓</span>',
                 "Price down",
             )
         elif last > prev:
             return (
-                '<span class="text-red-600" aria-label="Price up">↑</span>',
+                '<span class="text-red-400" aria-label="Price up">↑</span>',
                 "Price up",
             )
         else:
             return (
-                '<span class="text-gray-400" aria-label="No change">–</span>',
+                '<span class="text-slate-400" aria-label="No change">–</span>',
                 "No change",
             )
 
     indicator_html, _ = get_price_evolution_indicator(prices)
+    
+    # Format timestamps to French date style
+    formatted_timestamps = [format_french_date(ts) for ts in timestamps]
+    
     data = {
-        "labels": timestamps,
+        "labels": formatted_timestamps,
         "datasets": [
             {
-                "label": f"Price History for {product_name}",
+                "label": f"Historique - {product_name}",
                 "data": prices,
                 "fill": False,
-                "borderColor": "#0ea5e9",
-                "backgroundColor": "#bae6fd",
-                "tension": 0.3,
+                "borderColor": "#06b6d4",
+                "backgroundColor": "#0891b2",
+                "tension": 0.4,
+                "borderWidth": 2,
             }
         ],
     }
@@ -44,16 +66,40 @@ def render_price_history_graph_from_series(timestamps, prices, product_name):
         "options": {
             "responsive": True,
             "plugins": {
-                "legend": {"display": True},
-                "title": {"display": True, "text": f"Price History for {product_name}"},
+                "legend": {
+                    "display": True,
+                    "labels": {"color": "#e2e8f0", "font": {"size": 11}}
+                },
+                "title": {
+                    "display": True,
+                    "text": f"Historique - {product_name}",
+                    "color": "#06b6d4",
+                    "font": {"size": 14, "weight": "bold"}
+                }
             },
-            "scales": {"y": {"beginAtZero": True}},
+            "scales": {
+                "x": {
+                    "ticks": {"color": "#94a3b8", "font": {"size": 9}},
+                    "grid": {"color": "rgba(148, 163, 184, 0.1)"}
+                },
+                "y": {
+                    "beginAtZero": True,
+                    "ticks": {"color": "#94a3b8", "font": {"size": 9}},
+                    "grid": {"color": "rgba(148, 163, 184, 0.1)"}
+                }
+            },
+            "elements": {
+                "point": {"hoverBackgroundColor": "#06b6d4"},
+                "line": {"borderCapStyle": "round"}
+            }
         },
     }
     chart_json = json.dumps(chart_config)
     canvas_id = f"chart-{abs(hash(product_name))}"
-    html = f'<div class="flex items-center gap-2 mb-2"><span class="font-semibold">{product_name}</span>{indicator_html}</div>'
-    html += f'<canvas id="{canvas_id}" class="w-full h-64" aria-label="Price history graph for {product_name}" role="img"></canvas>'
+    html = f'<div class="flex items-center gap-2 mb-2"><span class="font-semibold text-slate-300">{product_name}</span>{indicator_html}</div>'
+    html += f'<div class="chart-bg p-4 rounded-xl">'
+    html += f'<canvas id="{canvas_id}" class="w-full h-32" aria-label="Price history graph for {product_name}" role="img"></canvas>'
+    html += f'</div>'
     html += f'<script>new Chart(document.getElementById("{canvas_id}"), {chart_json});</script>'
     return html
 
@@ -151,7 +197,7 @@ def render_price_history_graph(history, product_name):
     chart_json = json.dumps(chart_config)
     canvas_id = f"chart-{abs(hash(product_name))}"
     html = f'<div class="flex items-center gap-2 mb-2"><span class="font-semibold">{product_name}</span>{indicator_html}</div>'
-    html += f'<canvas id="{canvas_id}" class="w-full h-64" aria-label="Price history graph for {product_name}" role="img"></canvas>'
+    html += f'<canvas id="{canvas_id}" class="w-full h-32" aria-label="Price history graph for {product_name}" role="img"></canvas>'
     html += f'<script>new Chart(document.getElementById("{canvas_id}"), {chart_json});</script>'
     return html
 
@@ -214,7 +260,7 @@ def render_all_price_graphs(product_prices, history):
         chart_json = json.dumps(chart_config)
         canvas_id = f"chart-{abs(hash(name))}"
         html.append(
-            f'<div class="mb-10"><div class="flex items-center gap-2 mb-2"><h3 class="text-xl font-bold">{name}</h3>{indicator_html}</div><canvas id="{canvas_id}" class="w-full h-64" aria-label="Price history graph for {name}" role="img"></canvas>'
+            f'<div class="mb-10"><div class="flex items-center gap-2 mb-2"><h3 class="text-xl font-bold">{name}</h3>{indicator_html}</div><canvas id="{canvas_id}" class="w-full h-32" aria-label="Price history graph for {name}" role="img"></canvas>'
         )
         html.append(
             f'<script>new Chart(document.getElementById("{canvas_id}"), {chart_json});</script></div>'

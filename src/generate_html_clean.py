@@ -198,7 +198,6 @@ def _render_html(category_best, history, product_prices, product_min_prices, tot
         "    .main-content { width: 90vw; max-width: 1600px; margin: 0 auto; }",
         "    @media (max-width: 900px) { .main-content { width: 98vw; } }",
         "    canvas { background-color: rgba(15, 23, 42, 0.95) !important; border-radius: 8px; }",
-        "    .chart-bg canvas { max-height: 180px !important; height: 180px !important; }",
         "    .hidden { display: none; }",
         "    .glass-card { background: rgba(15, 23, 42, 0.95) !important; backdrop-filter: blur(16px); border: 1px solid rgba(51, 65, 85, 0.4); }",
         "    .price-badge { background: linear-gradient(135deg, #059669 0%, #10b981 100%); }",
@@ -225,7 +224,7 @@ def _render_html(category_best, history, product_prices, product_min_prices, tot
         '<h1 class="text-5xl font-extrabold text-center gradient-text mb-12 tracking-tight">Product Price Tracker</h1>',
         evolution_html,
         '<div id="total-warning"></div>',
-        '<div class="chart-container mt-8 mb-8"><h2 class="text-2xl font-bold text-center text-cyan-400 mb-6">Historique du prix total</h2><canvas id="total_price_chart" height="150"></canvas>'
+        '<div class="chart-container mt-8 mb-8"><h2 class="text-2xl font-bold text-center text-cyan-400 mb-6">Historique du prix total</h2><canvas id="total_price_chart" height="60"></canvas>'
         f"<script>\n"
         f'const ctx = document.getElementById("total_price_chart").getContext("2d");\n'
         f"new Chart(ctx, {chart_json});\n"
