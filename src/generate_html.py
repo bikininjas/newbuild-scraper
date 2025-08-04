@@ -115,6 +115,18 @@ def generate_html(product_prices, history):
             total = sum(product_min_prices[name][ts] if product_min_prices[name][ts] is not None else 0 for name in product_min_prices)
         total_history.append({"timestamp": ts, "total": round(total, 2)})
 
+    # Compute evolution info
+    evolution_html = ""
+    if len(total_history) >= 2:
+        prev = total_history[-2]["total"]
+        curr = total_history[-1]["total"]
+        diff = round(curr - prev, 2)
+        if diff == 0:
+            evolution_html = '<div class="text-center text-slate-500 font-semibold mb-2">No evolution</div>'
+        elif diff < 0:
+            evolution_html = f'<div class="text-center text-green-600 font-semibold mb-2">▼ -{abs(diff):.2f}€ (cheaper)</div>'
+        else:
+            evolution_html = f'<div class="text-center text-red-600 font-semibold mb-2">▲ +{diff:.2f}€ (more expensive)</div>'
     # Render HTML
     html = [
         "<!DOCTYPE html>",
@@ -131,6 +143,7 @@ def generate_html(product_prices, history):
         '<body class="bg-slate-50 font-inter">',
         '<div class="main-content px-4 py-8">',
         '<h1 class="text-4xl font-extrabold text-center text-slate-900 mb-10">Product Price Tracker</h1>',
+        evolution_html,
         '<div id="total-warning"></div>',
         '<div class="mt-8 mb-8"><h2 class="text-xl font-bold text-center text-cyan-700 mb-4">Total Price History</h2><canvas id="total_price_chart" height="120"></canvas>'
         # Inject Chart.js script for total price history

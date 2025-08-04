@@ -61,11 +61,31 @@ def render_summary_table(category_best, history):
                     best_row = valid_rows.sort_values(by="Date").iloc[0]
                     best_seen = format_french_date(str(best_row["Date"]))
         site_label = get_site_label(url)
+        # Evolution indicator
+        evolution_html = ""
+        product_history = history[history["Product_Name"] == name]
+        ts_col = "Timestamp_ISO" if "Timestamp_ISO" in product_history.columns else "Date"
+        product_history = product_history.sort_values(by=ts_col)
+        grouped = product_history.groupby(ts_col)
+        best_prices = []
+        for ts, group in grouped:
+            norm_prices = [float(normalize_price(p, name)) for p in group["Price"] if p is not None and str(p).strip() != "" and str(p).lower() != "nan"]
+            valid_prices = [p for p in norm_prices if p > 0 and p < 5000]
+            if valid_prices:
+                min_price = min(valid_prices)
+                best_prices.append(min_price)
+        if len(best_prices) >= 2:
+            if best_prices[-1] < best_prices[-2]:
+                evolution_html = '<span class="text-green-600 ml-2">↓</span>'
+            elif best_prices[-1] > best_prices[-2]:
+                evolution_html = '<span class="text-red-600 ml-2">↑</span>'
+            else:
+                evolution_html = '<span class="text-slate-500 ml-2">No evolution</span>'
         html.append(
             f"<tr>"
             f'<td class="border-t px-4 py-2 text-slate-800">{cat}</td>'
             f'<td class="border-t px-4 py-2 text-slate-800">{name}</td>'
-            f'<td class="border-t px-4 py-2 font-bold text-green-600">{price}€</td>'
+            f'<td class="border-t px-4 py-2 font-bold text-green-600">{price:.2f}€{evolution_html}</td>'
             f'<td class="border-t px-4 py-2"><a href="{url}" target="_blank" class="text-cyan-700 underline">{site_label}</a></td>'
             f'<td class="border-t px-4 py-2 text-xs text-slate-500">{best_seen}</td>'
             f"</tr>"

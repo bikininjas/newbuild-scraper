@@ -4,15 +4,17 @@ def render_price_history_graph(history, product_name):
     product_history = history[history["Product_Name"] == product_name]
     ts_col = "Timestamp_ISO" if "Timestamp_ISO" in product_history.columns else "Date"
     product_history = product_history.sort_values(by=ts_col)
-    # For each timestamp, get the lowest price
+    # For each timestamp, get the lowest valid price
     best_prices = []
     labels = []
     for ts, group in product_history.groupby(ts_col):
         try:
-            norm_prices = [float(normalize_price(p, product_name)) for p in group["Price"]]
-            min_price = min(norm_prices)
-            best_prices.append(min_price)
-            labels.append(ts)
+            norm_prices = [float(normalize_price(p, product_name)) for p in group["Price"] if p is not None and str(p).strip() != "" and str(p).lower() != "nan"]
+            valid_prices = [p for p in norm_prices if p > 0 and p < 5000]
+            if valid_prices:
+                min_price = min(valid_prices)
+                best_prices.append(min_price)
+                labels.append(ts)
         except Exception:
             continue
     prices = best_prices
