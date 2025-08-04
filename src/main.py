@@ -36,8 +36,6 @@ def main():
     updated_rows = []
     product_prices = {}
 
-    import logging
-
     for _, row in products.iterrows():
         url = row["URL"]
         name = row["Product_Name"]
