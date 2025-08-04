@@ -131,44 +131,39 @@ def get_price_playwright(url, site_selectors):
             # ...existing code...
             import re
 
+            def close_and_return(val):
+                browser.close()
+                return val
+
+            found_price = None
             for selector in site_selectors:
                 price_elems = soup.select(selector)
                 if price_elems:
                     for elem in price_elems:
-                        # For topachat.com, extract only the direct text node (price), ignore child nodes
                         if "topachat.com" in url:
-                            # Get only the direct text (not from children)
                             direct_texts = [t for t in elem.strings if t.strip()]
-                            if direct_texts:
-                                main_text = direct_texts[0]
-                            else:
-                                main_text = elem.get_text(strip=True)
-                            # Use regex to extract price before euro sign
+                            main_text = direct_texts[0] if direct_texts else elem.get_text(strip=True)
                             match = re.search(r"([\d.,]+)\s*€", main_text)
                             if match:
                                 price_str = match.group(1)
-                                # ...existing code...
                                 price = clean_price(price_str)
                                 if price:
-                                    browser.close()
-                                    return price
-                            # Fallback: split by euro sign
+                                    found_price = price
+                                    break
                             if "€" in main_text:
                                 price_str = main_text.split("€")[0].strip()
-                                # ...existing code...
                                 price = clean_price(price_str)
                                 if price:
-                                    browser.close()
-                                    return price
+                                    found_price = price
+                                    break
                         else:
                             text = elem.get_text(strip=True)
-                            # ...existing code...
                             price = clean_price(text)
                             if price:
-                                browser.close()
-                                return price
-                else:
-                    pass
+                                found_price = price
+                                break
+                    if found_price is not None:
+                        return close_and_return(found_price)
             browser.close()
             logging.warning(
                 f"No price found for {url} with selectors {site_selectors} (Playwright). HTML snippet: {content[:500]}"
