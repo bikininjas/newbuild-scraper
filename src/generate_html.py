@@ -49,6 +49,7 @@ def main():
         if entries:
             product_prices[name] = entries
 
+
 def normalize_and_filter_prices(entries, name):
     valid_entries = []
     for entry in entries:
@@ -61,6 +62,7 @@ def normalize_and_filter_prices(entries, name):
             continue
     return valid_entries
 
+
 def get_category_best(product_prices):
     category_best = {}
     for name, entries in product_prices.items():
@@ -69,29 +71,45 @@ def get_category_best(product_prices):
             continue
         best = min(valid_entries, key=lambda x: float(x["price"]))
         cat = get_category(name, best["url"])
-        if cat not in category_best or float(best["price"]) < float(category_best[cat]["price"]):
-            category_best[cat] = {"name": name, "price": best["price"], "url": best["url"]}
+        if cat not in category_best or float(best["price"]) < float(
+            category_best[cat]["price"]
+        ):
+            category_best[cat] = {
+                "name": name,
+                "price": best["price"],
+                "url": best["url"],
+            }
         product_prices[name] = valid_entries
     return category_best, product_prices
+
 
 def extract_timestamps(history):
     if "Timestamp_ISO" in history.columns:
         ts_col = history["Timestamp_ISO"]
     else:
         ts_col = history["Date"]
-    return sorted({str(ts) for ts in ts_col if isinstance(ts, str) and ts.strip() and ts != 'nan'})
+    return sorted(
+        {str(ts) for ts in ts_col if isinstance(ts, str) and ts.strip() and ts != "nan"}
+    )
+
 
 def get_product_min_price_series(category_best, history, timestamps):
     product_min_prices = {}
     for cat, info in category_best.items():
         name = info["name"]
         product_history = history[history["Product_Name"] == name]
-        ts_col_name = "Timestamp_ISO" if "Timestamp_ISO" in product_history.columns else "Date"
+        ts_col_name = (
+            "Timestamp_ISO" if "Timestamp_ISO" in product_history.columns else "Date"
+        )
         product_history = product_history.sort_values(by=ts_col_name)
         prices = []
         ts_labels = []
         for ts, group in product_history.groupby(ts_col_name):
-            valid_prices = [float(normalize_price(row["Price"], name)) for _, row in group.iterrows() if 0 < float(normalize_price(row["Price"], name)) < 5000]
+            valid_prices = [
+                float(normalize_price(row["Price"], name))
+                for _, row in group.iterrows()
+                if 0 < float(normalize_price(row["Price"], name)) < 5000
+            ]
             if valid_prices:
                 min_price = min(valid_prices)
                 prices.append(min_price)
@@ -99,17 +117,31 @@ def get_product_min_price_series(category_best, history, timestamps):
         product_min_prices[name] = {"timestamps": ts_labels, "prices": prices}
     return product_min_prices
 
+
 def get_total_price_history(product_min_prices, timestamps):
     total_history = []
     absolute_best = {}
     for name in product_min_prices:
-        min_price = min([p for p in product_min_prices[name].values() if p is not None and p > 0], default=0)
+        min_price = min(
+            [p for p in product_min_prices[name].values() if p is not None and p > 0],
+            default=0,
+        )
         absolute_best[name] = min_price
     for i, ts in enumerate(timestamps):
         if i == len(timestamps) - 1:
-            total = sum(absolute_best[name] if absolute_best[name] is not None else 0 for name in product_min_prices)
+            total = sum(
+                absolute_best[name] if absolute_best[name] is not None else 0
+                for name in product_min_prices
+            )
         else:
-            total = sum(product_min_prices[name].get(ts, 0) if product_min_prices[name].get(ts, 0) is not None else 0 for name in product_min_prices)
+            total = sum(
+                (
+                    product_min_prices[name].get(ts, 0)
+                    if product_min_prices[name].get(ts, 0) is not None
+                    else 0
+                )
+                for name in product_min_prices
+            )
         total_history.append({"timestamp": ts, "total": round(total, 2)})
     return total_history, absolute_best
     # Find cheapest product per category
@@ -121,11 +153,14 @@ def get_total_price_history(product_min_prices, timestamps):
             # Only add valid, non-nan prices
             try:
                 price_val = float(norm_price)
-                if price_val > 0 and not (isinstance(price_val, float) and (price_val != price_val)):
+                if price_val > 0 and not (
+                    isinstance(price_val, float) and (price_val != price_val)
+                ):
                     norm_entries.append({"price": norm_price, "url": entry["url"]})
             except Exception:
                 continue
     generate_html(product_prices, history)
+
 
 def generate_html(product_prices, history):
     # Find cheapest product per category
@@ -137,7 +172,9 @@ def generate_html(product_prices, history):
             # Only add valid, non-nan prices
             try:
                 price_val = float(norm_price)
-                if price_val > 0 and not (isinstance(price_val, float) and (price_val != price_val)):
+                if price_val > 0 and not (
+                    isinstance(price_val, float) and (price_val != price_val)
+                ):
                     norm_entries.append({"price": norm_price, "url": entry["url"]})
             except Exception:
                 continue
@@ -145,15 +182,29 @@ def generate_html(product_prices, history):
             continue
         best = min(norm_entries, key=lambda x: float(x["price"]))
         cat = get_category(name, best["url"])
-        if cat not in category_best or float(best["price"]) < float(category_best[cat]["price"]):
-            category_best[cat] = {"name": name, "price": best["price"], "url": best["url"]}
+        if cat not in category_best or float(best["price"]) < float(
+            category_best[cat]["price"]
+        ):
+            category_best[cat] = {
+                "name": name,
+                "price": best["price"],
+                "url": best["url"],
+            }
         product_prices[name] = norm_entries
     # Use helpers for timestamps, category_best, min price series, and total price history
     category_best, product_prices = get_category_best(product_prices)
     timestamps = extract_timestamps(history)
-    product_min_prices = get_product_min_price_series(category_best, history, timestamps)
+    product_min_prices = get_product_min_price_series(
+        category_best, history, timestamps
+    )
     # For total price history, we still need all timestamps, but for product graphs, use only those with data
-    total_history, _ = get_total_price_history({name: dict(zip(data["timestamps"], data["prices"])) for name, data in product_min_prices.items()}, timestamps)
+    total_history, _ = get_total_price_history(
+        {
+            name: dict(zip(data["timestamps"], data["prices"]))
+            for name, data in product_min_prices.items()
+        },
+        timestamps,
+    )
 
     # Compute evolution info (use correct previous and current total)
     evolution_html = ""
@@ -170,6 +221,7 @@ def generate_html(product_prices, history):
     # Render HTML
     # Format timestamps as French short date
     from datetime import datetime
+
     def format_french_short(dtstr):
         try:
             if "T" in dtstr:
@@ -179,52 +231,64 @@ def generate_html(product_prices, history):
             return dt.strftime("%d/%m/%Y - %H:%M")
         except Exception:
             return dtstr
+
     formatted_labels = [format_french_short(x["timestamp"]) for x in total_history]
     product_graph_datasets = []
-    colors = ["#0ea5e9", "#f59e42", "#e11d48", "#6366f1", "#16a34a", "#f43f5e", "#facc15", "#a3e635", "#14b8a6", "#f472b6"]
+    colors = [
+        "#0ea5e9",
+        "#f59e42",
+        "#e11d48",
+        "#6366f1",
+        "#16a34a",
+        "#f43f5e",
+        "#facc15",
+        "#a3e635",
+        "#14b8a6",
+        "#f472b6",
+    ]
     for idx, (name, data) in enumerate(product_min_prices.items()):
         if data["timestamps"] and data["prices"]:
-            product_graph_datasets.append({
-                "label": name,
-                "data": data["prices"],
-                "fill": False,
-                "borderColor": colors[idx % len(colors)],
-                "backgroundColor": colors[idx % len(colors)],
-                "borderWidth": 1,
-                "tension": 0.3,
-                "pointRadius": 0,
-                "hidden": False
-            })
+            product_graph_datasets.append(
+                {
+                    "label": name,
+                    "data": data["prices"],
+                    "fill": False,
+                    "borderColor": colors[idx % len(colors)],
+                    "backgroundColor": colors[idx % len(colors)],
+                    "borderWidth": 1,
+                    "tension": 0.3,
+                    "pointRadius": 0,
+                    "hidden": False,
+                }
+            )
     # Add total price dataset (thick, prominent)
-    product_graph_datasets.append({
-        "label": "Total Price (€)",
-        "data": [x["total"] for x in total_history],
-        "fill": False,
-        "borderColor": "#16a34a",
-        "backgroundColor": "#bbf7d0",
-        "borderWidth": 4,
-        "tension": 0.3,
-        "pointRadius": 2,
-        "order": 1
-    })
+    product_graph_datasets.append(
+        {
+            "label": "Total Price (€)",
+            "data": [x["total"] for x in total_history],
+            "fill": False,
+            "borderColor": "#16a34a",
+            "backgroundColor": "#bbf7d0",
+            "borderWidth": 4,
+            "tension": 0.3,
+            "pointRadius": 2,
+            "order": 1,
+        }
+    )
     chart_config = {
         "type": "line",
-        "data": {
-            "labels": formatted_labels,
-            "datasets": product_graph_datasets
-        },
+        "data": {"labels": formatted_labels, "datasets": product_graph_datasets},
         "options": {
             "responsive": True,
             "plugins": {
                 "legend": {"display": True},
-                "title": {"display": True, "text": "Total Price History"}
+                "title": {"display": True, "text": "Total Price History"},
             },
-            "scales": {
-                "y": {"beginAtZero": False}
-            }
-        }
+            "scales": {"y": {"beginAtZero": False}},
+        },
     }
     import json
+
     chart_json = json.dumps(chart_config)
     html = [
         "<!DOCTYPE html>",
@@ -244,10 +308,10 @@ def generate_html(product_prices, history):
         evolution_html,
         '<div id="total-warning"></div>',
         '<div class="mt-8 mb-8"><h2 class="text-xl font-bold text-center text-cyan-700 mb-4">Total Price History</h2><canvas id="total_price_chart" height="120"></canvas>'
-        f'<script>\n'
+        f"<script>\n"
         f'const ctx = document.getElementById("total_price_chart").getContext("2d");\n'
-        f'new Chart(ctx, {chart_json});\n'
-        f'</script></div>',
+        f"new Chart(ctx, {chart_json});\n"
+        f"</script></div>",
     ]
     html.append(render_summary_table(category_best, history))
     # Pass product_min_prices to product card rendering so it can use only valid timestamps/prices
@@ -259,6 +323,7 @@ def generate_html(product_prices, history):
     with open(output_path, "w", encoding="utf-8") as f:
         f.write("\n".join(html))
     print(f"[generate_html.py] HTML file written to: {output_path}")
+
 
 def main():
     products = load_products("produits.csv")
@@ -285,6 +350,7 @@ def main():
         if entries:
             product_prices[name] = entries
     generate_html(product_prices, history)
+
 
 if __name__ == "__main__":
     main()

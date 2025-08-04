@@ -1,4 +1,3 @@
-
 import os
 import pandas as pd
 from datetime import datetime
@@ -15,11 +14,14 @@ LOG_FILE = "scraper.log"
 setup_logging(LOG_FILE)
 
 
-
 def main():
     parser = argparse.ArgumentParser(description="Product price scraper")
-    parser.add_argument("--site", type=str, help="Only test URLs containing this domain", default=None)
-    parser.add_argument("--no-html", action="store_true", help="Do not generate output.html")
+    parser.add_argument(
+        "--site", type=str, help="Only test URLs containing this domain", default=None
+    )
+    parser.add_argument(
+        "--no-html", action="store_true", help="Do not generate output.html"
+    )
     args = parser.parse_args()
 
     products = pd.read_csv(PRODUCTS_FILE)
@@ -35,6 +37,7 @@ def main():
     product_prices = {}
 
     import logging
+
     for _, row in products.iterrows():
         url = row["URL"]
         name = row["Product_Name"]
@@ -72,7 +75,7 @@ def main():
             logging.info(f"[CSV] Saving {len(df_new)} new rows to {HISTORY_FILE}")
             history.to_csv(HISTORY_FILE, index=False)
             # Check if topachat.com rows are present in df_new
-            topachat_rows = df_new[df_new['URL'].str.contains('topachat.com')]
+            topachat_rows = df_new[df_new["URL"].str.contains("topachat.com")]
             logging.info(f"[TOPACHAT] Rows saved to CSV: {topachat_rows}")
 
 

@@ -23,7 +23,11 @@ def get_site_selector(url):
         return [PRICE, NEW_PRICE, ".price__amount"]
     if "topachat.com" in url:
         # Try both specific and generic selectors
-        return [".offer-price__price.svelte-hgy1uf", ".offer-price__price", "span.offer-price__price"]
+        return [
+            ".offer-price__price.svelte-hgy1uf",
+            ".offer-price__price",
+            "span.offer-price__price",
+        ]
     if "alternate.fr" in url:
         return [PRICE, ".product-detail-price"]
     if "materiel.net" in url:
@@ -55,7 +59,7 @@ def get_price_requests(url, site_selectors):
         for selector in site_selectors:
             price_elem = soup.select_one(selector)
             if price_elem:
-            # ...existing code...
+                # ...existing code...
                 return clean_price(price_elem.get_text())
             else:
                 pass
@@ -106,13 +110,17 @@ def get_price_playwright(url, site_selectors):
                     page.keyboard.press("ArrowDown")
                     page.wait_for_timeout(5000)
                 except Exception as e:
-                    logging.warning(f"[Playwright] User emulation failed for {url}: {e}")
+                    logging.warning(
+                        f"[Playwright] User emulation failed for {url}: {e}"
+                    )
             # For topachat, just wait for price element to appear
             if "topachat.com" in url:
                 try:
                     page.wait_for_selector(".offer-price__price", timeout=10000)
                 except Exception:
-                    logging.warning(f"[Playwright] .offer-price__price not found after wait for {url}")
+                    logging.warning(
+                        f"[Playwright] .offer-price__price not found after wait for {url}"
+                    )
             # Wait longer for pccomponentes.fr
             if "pccomponentes.fr" in url:
                 page.wait_for_timeout(7000)
@@ -122,6 +130,7 @@ def get_price_playwright(url, site_selectors):
             soup = BeautifulSoup(content, "html.parser")
             # ...existing code...
             import re
+
             for selector in site_selectors:
                 price_elems = soup.select(selector)
                 if price_elems:
@@ -138,7 +147,7 @@ def get_price_playwright(url, site_selectors):
                             match = re.search(r"([\d.,]+)\s*€", main_text)
                             if match:
                                 price_str = match.group(1)
-                            # ...existing code...
+                                # ...existing code...
                                 price = clean_price(price_str)
                                 if price:
                                     browser.close()
@@ -146,7 +155,7 @@ def get_price_playwright(url, site_selectors):
                             # Fallback: split by euro sign
                             if "€" in main_text:
                                 price_str = main_text.split("€")[0].strip()
-                            # ...existing code...
+                                # ...existing code...
                                 price = clean_price(price_str)
                                 if price:
                                     browser.close()
@@ -161,7 +170,9 @@ def get_price_playwright(url, site_selectors):
                 else:
                     pass
             browser.close()
-            logging.warning(f"No price found for {url} with selectors {site_selectors} (Playwright). HTML snippet: {content[:500]}")
+            logging.warning(
+                f"No price found for {url} with selectors {site_selectors} (Playwright). HTML snippet: {content[:500]}"
+            )
             if "captcha" in content.lower() or "robot" in content.lower():
                 logging.warning(f"Possible anti-bot detected for {url} (Playwright)")
     except Exception as e:
