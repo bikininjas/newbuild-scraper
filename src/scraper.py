@@ -22,7 +22,7 @@ def get_site_selector(url):
     if "ldlc.com" in url:
         return [PRICE, NEW_PRICE, ".price__amount"]
     if "topachat.com" in url:
-        # Try both specific and generic selectors
+        # Try multiple selectors for topachat.com, ordered from most specific to more generic
         return [
             ".offer-price__price.svelte-hgy1uf",
             ".offer-price__price",
@@ -90,21 +90,21 @@ def get_price_playwright(url, site_selectors):
             page = context.new_page()
             page.goto(url, timeout=30000)
             # Emulate user actions for pccomponentes.fr
+            PCCOMPONENTES_MOUSE_MOVES = [
+                (100, 200),
+                (200, 300),
+                (300, 400),
+                (400, 500),
+                (500, 600),
+                (600, 700),
+                (700, 800),
+                (800, 900),
+                (900, 1000),
+                (1000, 1100),
+            ]
             if "pccomponentes.fr" in url:
                 try:
-                    mouse_moves = [
-                        (100, 200),
-                        (200, 300),
-                        (300, 400),
-                        (400, 500),
-                        (500, 600),
-                        (600, 700),
-                        (700, 800),
-                        (800, 900),
-                        (900, 1000),
-                        (1000, 1100),
-                    ]
-                    for x, y in mouse_moves:
+                    for x, y in PCCOMPONENTES_MOUSE_MOVES:
                         page.mouse.move(x, y)
                     page.keyboard.press("PageDown")
                     page.keyboard.press("PageDown")
