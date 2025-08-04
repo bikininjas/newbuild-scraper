@@ -44,6 +44,21 @@ def main():
                     norm_entries.append({"price": norm_price, "url": entry["url"]})
             except Exception:
                 continue
+
+def generate_html(product_prices, history):
+    # Find cheapest product per category
+    category_best = {}
+    for name, entries in product_prices.items():
+        norm_entries = []
+        for entry in entries:
+            norm_price = normalize_price(entry["price"], name)
+            # Only add valid, non-nan prices
+            try:
+                price_val = float(norm_price)
+                if price_val > 0 and not (isinstance(price_val, float) and (price_val != price_val)):
+                    norm_entries.append({"price": norm_price, "url": entry["url"]})
+            except Exception:
+                continue
         if not norm_entries:
             continue
         best = min(norm_entries, key=lambda x: float(x["price"]))
@@ -58,6 +73,7 @@ def main():
         ts_col = history["Date"]
     # Normalize and deduplicate timestamps
     timestamps = sorted(set(str(ts) for ts in ts_col if isinstance(ts, str) and ts.strip() and ts != 'nan'))
+
     # For each product, build a running minimum price series by timestamp
     product_min_prices = {}
     for cat, info in category_best.items():
@@ -156,6 +172,31 @@ def main():
         f.write("\n".join(html))
     print(f"[generate_html.py] HTML file written to: {output_path}")
 
+def main():
+    products = load_products("produits.csv")
+    history = load_history("historique_prix.csv")
+    # Build product_prices: for each product, collect latest price per URL
+    product_prices = {}
+    for name, urls in products.items():
+        entries = []
+        for url in urls:
+            rows = history[(history["Product_Name"] == name) & (history["URL"] == url)]
+            if not rows.empty:
+                if "Timestamp_ISO" in rows:
+                    rows = rows.sort_values(by="Timestamp_ISO", ascending=False)
+                else:
+                    rows = rows.sort_values(by="Date", ascending=False)
+                latest = rows.iloc[0]
+                # Filter out outlier/invalid prices (e.g., > 5000)
+                try:
+                    price_val = float(latest["Price"])
+                    if 0 < price_val < 5000:
+                        entries.append({"price": latest["Price"], "url": url})
+                except Exception:
+                    continue
+        if entries:
+            product_prices[name] = entries
+    generate_html(product_prices, history)
 
 if __name__ == "__main__":
     main()
