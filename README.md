@@ -32,8 +32,9 @@ The generated HTML now includes:
 
 ### How the graphs work
 
-- **Total Price History graph:** Shows the sum of the best price for each product at each timestamp. The last point always matches the sum of the absolute best prices in the table.
-- **Product Price History graph:** Shows the best price (lowest) for each product at each timestamp.
+- **Total Price History graph:** Shows the sum of the best price for each product at each timestamp. The last point always matches the sum of the absolute best prices in the table. Missing prices are interpolated by repeating the last known value for visual continuity.
+- **Product Price History graph:** Shows the best price (lowest) for each product at each timestamp. If a product's price is missing at a timestamp, the last known price is repeated for a smoother, visually appealing line.
+- **Price Evolution Indicator:** Each product graph and card now displays an indicator (green ↓ for price drop, red ↑ for price increase, gray – for no change) comparing the last price to the previous one. Indicators use accessible colors and ARIA labels for screen readers.
 
 ### Known Issues / To Fix
 

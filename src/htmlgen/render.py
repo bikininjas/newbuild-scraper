@@ -103,11 +103,12 @@ def render_summary_table(category_best, history):
     return "\n".join(html)
 
 
-def render_product_cards(product_prices, history):
+def render_product_cards(product_prices, history, product_min_prices):
     from .graph import render_price_history_graph
     html = []
     html.append('<div class="grid gap-8">')
     for name, entries in product_prices.items():
+        min_price_data = product_min_prices.get(name, {"timestamps": [], "prices": []})
         best = min(entries, key=lambda x: float(x["price"]))
         html.append('<div class="bg-white rounded-2xl shadow-lg border border-slate-200 p-8">')
         html.append(f'<h2 class="text-2xl font-bold text-cyan-700 mb-4">{name}</h2>')
@@ -117,9 +118,10 @@ def render_product_cards(product_prices, history):
             norm_price = normalize_price(entry["price"], name)
             html.append(f'<li class="mb-2"><span class="font-bold text-green-600">{norm_price}€</span> @ <a href="{entry["url"]}" target="_blank" class="text-cyan-700 underline">{entry["url"]}</a></li>')
         html.append("</ul>")
-        # Add product price graph alongside the card
+        # Always add product price graph, even if there are no data points
         html.append('<div class="mt-6">')
-        html.append(render_price_history_graph(history, name))
+        from .graph import render_price_history_graph_from_series
+        html.append(render_price_history_graph_from_series(min_price_data["timestamps"], min_price_data["prices"], name))
         html.append('</div>')
         history_entries = history[history["Product_Name"] == name]
         if not history_entries.empty:
