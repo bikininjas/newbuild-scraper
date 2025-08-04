@@ -14,15 +14,32 @@ PRODUCT_PRICE = ".product-price"
 OLD_PRICE = ".old-price"
 NEW_PRICE = ".new-price"
 
+# Mouse movement coordinates for anti-bot detection
+PCCOMPONENTES_MOUSE_MOVES = [
+    (100, 200),
+    (200, 300),
+    (300, 400),
+    (400, 500),
+    (500, 600),
+    (600, 700),
+    (700, 800),
+    (800, 900),
+    (900, 1000),
+    (1000, 1100),
+]
+
 
 def get_site_selector(url):
+    # Extract site checks to variables for better performance
+    is_topachat = "topachat.com" in url
+
     if "amazon.fr" in url:
         return [".a-price-whole"]
     if "caseking.de" in url:
         return [".js-unit-price"]
     if "ldlc.com" in url:
         return [PRICE, NEW_PRICE, ".price__amount"]
-    if "topachat.com" in url:
+    if is_topachat:
         # Try multiple selectors for topachat.com, ordered from most specific to more generic
         return [
             ".offer-price__price.svelte-hgy1uf",
@@ -73,10 +90,14 @@ def get_price_requests(url, site_selectors):
 
 
 def get_price_playwright(url, site_selectors):
+    # Extract site checks to variables to avoid repeated string operations
+    is_topachat = "topachat.com" in url
+    is_pccomponentes = "pccomponentes.fr" in url
+
     try:
         with sync_playwright() as p:
             # Use non-headless mode for pccomponentes.fr
-            headless_mode = not ("pccomponentes.fr" in url)
+            headless_mode = not is_pccomponentes
             browser = p.chromium.launch(headless=headless_mode)
             # Add realistic headers
             context = browser.new_context(
@@ -91,19 +112,7 @@ def get_price_playwright(url, site_selectors):
             page = context.new_page()
             page.goto(url, timeout=30000)
             # Emulate user actions for pccomponentes.fr
-            PCCOMPONENTES_MOUSE_MOVES = [
-                (100, 200),
-                (200, 300),
-                (300, 400),
-                (400, 500),
-                (500, 600),
-                (600, 700),
-                (700, 800),
-                (800, 900),
-                (900, 1000),
-                (1000, 1100),
-            ]
-            if "pccomponentes.fr" in url:
+            if is_pccomponentes:
                 try:
                     for x, y in PCCOMPONENTES_MOUSE_MOVES:
                         page.mouse.move(x, y)
@@ -117,7 +126,7 @@ def get_price_playwright(url, site_selectors):
                         f"[Playwright] User emulation failed for {url}: {e}"
                     )
             # For topachat, just wait for price element to appear
-            if "topachat.com" in url:
+            if is_topachat:
                 try:
                     page.wait_for_selector(".offer-price__price", timeout=10000)
                 except Exception:
@@ -125,7 +134,7 @@ def get_price_playwright(url, site_selectors):
                         f"[Playwright] .offer-price__price not found after wait for {url}"
                     )
             # Wait longer for pccomponentes.fr
-            if "pccomponentes.fr" in url:
+            if is_pccomponentes:
                 page.wait_for_timeout(7000)
             else:
                 page.wait_for_timeout(3000)
@@ -141,7 +150,7 @@ def get_price_playwright(url, site_selectors):
                 price_elems = soup.select(selector)
                 if price_elems:
                     for elem in price_elems:
-                        if "topachat.com" in url:
+                        if is_topachat:
                             direct_texts = [t for t in elem.strings if t.strip()]
                             main_text = (
                                 direct_texts[0]

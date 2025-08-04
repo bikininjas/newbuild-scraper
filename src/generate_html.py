@@ -111,35 +111,9 @@ def _get_evolution_html(total_history):
 
 
 def _get_formatted_labels(total_history):
-    from datetime import datetime
+    from utils import format_french_date
 
-    MONTHS_FR = [
-        "janv",
-        "févr",
-        "mars",
-        "avr",
-        "mai",
-        "juin",
-        "juil",
-        "août",
-        "sept",
-        "oct",
-        "nov",
-        "déc",
-    ]
-
-    def format_french_short(dtstr):
-        try:
-            if "T" in dtstr:
-                dt = datetime.fromisoformat(dtstr.split(".")[0])
-            else:
-                dt = datetime.strptime(dtstr, "%Y-%m-%d %H:%M:%S")
-            month = MONTHS_FR[dt.month - 1]
-            return f"{dt.day:02d} {month} {dt.year} - {dt.hour:02d}:{dt.minute:02d}"
-        except Exception:
-            return dtstr
-
-    return [format_french_short(x["timestamp"]) for x in total_history]
+    return [format_french_date(x["timestamp"]) for x in total_history]
 
 
 def _get_product_graph_datasets(product_min_prices, total_history):

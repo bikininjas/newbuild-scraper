@@ -22,34 +22,13 @@ def render_summary_table(category_best, history):
         '<th class="px-6 py-4 text-left text-sm font-semibold text-slate-200 bg-slate-900/70">Vu Le</th>'
         "</tr></thead><tbody>"
     )
+    import pandas as pd
     import numpy as np
-    from datetime import datetime
+    import sys
+    import os
 
-    def format_french_date(dtstr):
-        # Try to parse ISO or fallback to raw string
-        try:
-            if "T" in dtstr:
-                dt = datetime.fromisoformat(dtstr.split(".")[0])
-            else:
-                dt = datetime.strptime(dtstr, "%Y-%m-%d %H:%M:%S")
-            months = [
-                "janvier",
-                "février",
-                "mars",
-                "avril",
-                "mai",
-                "juin",
-                "juillet",
-                "août",
-                "septembre",
-                "octobre",
-                "novembre",
-                "décembre",
-            ]
-            month = months[dt.month - 1]
-            return f"{dt.day} {month} {dt.year}, {dt.hour:02d}:{dt.minute:02d}"
-        except Exception:
-            return dtstr
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from utils import format_french_date_full
 
     for cat, info in category_best.items():
         name = info["name"]
@@ -81,14 +60,14 @@ def render_summary_table(category_best, history):
                 ]
                 if not valid_rows.empty:
                     best_row = valid_rows.sort_values(by="Timestamp_ISO").iloc[0]
-                    best_seen = format_french_date(str(best_row["Timestamp_ISO"]))
+                    best_seen = format_french_date_full(str(best_row["Timestamp_ISO"]))
             elif "Date" in matched.columns:
                 valid_rows = matched[
                     matched["Date"].notnull() & (matched["Date"] != "")
                 ]
                 if not valid_rows.empty:
                     best_row = valid_rows.sort_values(by="Date").iloc[0]
-                    best_seen = format_french_date(str(best_row["Date"]))
+                    best_seen = format_french_date_full(str(best_row["Date"]))
         site_label = get_site_label(url)
         # Evolution indicator
         evolution_html = ""

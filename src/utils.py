@@ -1,5 +1,65 @@
 import logging
 from fake_useragent import UserAgent
+from datetime import datetime
+
+
+# French month abbreviations for date formatting
+MONTHS_FR = [
+    "janv",
+    "févr",
+    "mars",
+    "avr",
+    "mai",
+    "juin",
+    "juil",
+    "août",
+    "sept",
+    "oct",
+    "nov",
+    "déc",
+]
+
+# French full month names for date formatting
+MONTHS_FR_FULL = [
+    "janvier",
+    "février",
+    "mars",
+    "avril",
+    "mai",
+    "juin",
+    "juillet",
+    "août",
+    "septembre",
+    "octobre",
+    "novembre",
+    "décembre",
+]
+
+
+def format_french_date(dtstr):
+    """Format timestamp to French date style with abbreviated months."""
+    try:
+        if "T" in dtstr:
+            dt = datetime.fromisoformat(dtstr.split(".")[0])
+        else:
+            dt = datetime.strptime(dtstr, "%Y-%m-%d %H:%M:%S")
+        month = MONTHS_FR[dt.month - 1]
+        return f"{dt.day:02d} {month} {dt.year} - {dt.hour:02d}:{dt.minute:02d}"
+    except Exception:
+        return dtstr
+
+
+def format_french_date_full(dtstr):
+    """Format timestamp to French date style with full month names."""
+    try:
+        if "T" in dtstr:
+            dt = datetime.fromisoformat(dtstr.split(".")[0])
+        else:
+            dt = datetime.strptime(dtstr, "%Y-%m-%d %H:%M:%S")
+        month = MONTHS_FR_FULL[dt.month - 1]
+        return f"{dt.day} {month} {dt.year}, {dt.hour:02d}:{dt.minute:02d}"
+    except Exception:
+        return dtstr
 
 
 def get_user_agent():

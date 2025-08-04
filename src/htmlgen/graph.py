@@ -1,32 +1,10 @@
 def render_price_history_graph_from_series(timestamps, prices, product_name):
     import json
-    from datetime import datetime
+    import sys
+    import os
 
-    def format_french_date(dtstr):
-        """Format timestamp to French date style"""
-        MONTHS_FR = [
-            "janv",
-            "févr",
-            "mars",
-            "avr",
-            "mai",
-            "juin",
-            "juil",
-            "août",
-            "sept",
-            "oct",
-            "nov",
-            "déc",
-        ]
-        try:
-            if "T" in dtstr:
-                dt = datetime.fromisoformat(dtstr.split(".")[0])
-            else:
-                dt = datetime.strptime(dtstr, "%Y-%m-%d %H:%M:%S")
-            month = MONTHS_FR[dt.month - 1]
-            return f"{dt.day:02d} {month} {dt.year} - {dt.hour:02d}:{dt.minute:02d}"
-        except Exception:
-            return dtstr
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from utils import format_french_date
 
     def get_price_evolution_indicator(prices):
         if len(prices) < 2 or prices[-1] is None or prices[-2] is None:
