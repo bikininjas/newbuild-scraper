@@ -22,6 +22,7 @@ def process_product_row(row, args, product_prices, updated_rows, now_iso, today)
     updated_rows.append(row_dict)
     debug_log_domain(url, f"Added row to updated_rows: {row_dict}")
 
+
 def save_new_rows(df_new, history):
     df_new = df_new.dropna(how="all")
     logging.info(f"[CSV] DataFrame to add: {df_new}")
@@ -33,6 +34,7 @@ def save_new_rows(df_new, history):
             domain_rows = df_new[df_new["URL"].str.contains(domain)]
             logging.info(f"[{domain.upper()}] Rows saved to CSV: {domain_rows}")
     return history
+
 
 import os
 import pandas as pd
@@ -47,11 +49,13 @@ import logging
 # Domains for which debug logging is enabled
 DEBUG_DOMAINS = ["topachat.com"]
 
+
 def debug_log_domain(url, message):
     for domain in DEBUG_DOMAINS:
         if domain in url:
             logging.info(f"[{domain.upper()}] {message}")
             break
+
 
 PRODUCTS_FILE = "produits.csv"
 HISTORY_FILE = "historique_prix.csv"

@@ -132,7 +132,6 @@ def get_price_playwright(url, site_selectors):
             content = page.content()
             soup = BeautifulSoup(content, "html.parser")
 
-
             def close_and_return(val):
                 browser.close()
                 return val
@@ -144,7 +143,11 @@ def get_price_playwright(url, site_selectors):
                     for elem in price_elems:
                         if "topachat.com" in url:
                             direct_texts = [t for t in elem.strings if t.strip()]
-                            main_text = direct_texts[0] if direct_texts else elem.get_text(strip=True)
+                            main_text = (
+                                direct_texts[0]
+                                if direct_texts
+                                else elem.get_text(strip=True)
+                            )
                             match = re.search(r"([\d.,]+)\s*€", main_text)
                             if match:
                                 price_str = match.group(1)

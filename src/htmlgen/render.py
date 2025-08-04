@@ -111,9 +111,13 @@ def render_summary_table(category_best, history):
                 best_prices.append(min_price)
         if len(best_prices) >= 2:
             if best_prices[-1] < best_prices[-2]:
-                evolution_html = '<span class="text-green-400 ml-2 font-semibold">↓</span>'
+                evolution_html = (
+                    '<span class="text-green-400 ml-2 font-semibold">↓</span>'
+                )
             elif best_prices[-1] > best_prices[-2]:
-                evolution_html = '<span class="text-red-400 ml-2 font-semibold">↑</span>'
+                evolution_html = (
+                    '<span class="text-red-400 ml-2 font-semibold">↑</span>'
+                )
             else:
                 evolution_html = '<span class="text-slate-400 ml-2">–</span>'
         html.append(
@@ -138,7 +142,9 @@ def render_summary_table(category_best, history):
     return "\n".join(html)
 
 
-def render_product_cards(product_prices, history, product_min_prices, show_history=True):
+def render_product_cards(
+    product_prices, history, product_min_prices, show_history=True
+):
     from .graph import render_price_history_graph
 
     html = []
@@ -148,11 +154,13 @@ def render_product_cards(product_prices, history, product_min_prices, show_histo
         best = min(entries, key=lambda x: float(x["price"]))
         # Create a unique ID for this product's history section
         history_id = f"history-{abs(hash(name))}"
-        
+
         html.append(
             '<div class="glass-card rounded-2xl shadow-2xl border border-slate-600 p-8 hover:shadow-cyan-500/10 transition-all duration-300">'
         )
-        html.append(f'<h2 class="text-2xl font-bold text-cyan-400 mb-4 flex items-center gap-2">🔥 {name}</h2>')
+        html.append(
+            f'<h2 class="text-2xl font-bold text-cyan-400 mb-4 flex items-center gap-2">🔥 {name}</h2>'
+        )
         html.append(
             f'<div class="mb-6"><span class="inline-block price-badge text-white font-semibold px-6 py-3 rounded-xl shadow-lg">💎 Meilleur prix: <span class="font-bold text-xl">{best["price"]}€</span> @ <a href="{best["url"]}" target="_blank" class="underline hover:text-slate-200 transition-colors">{get_site_label(best["url"])}</a></span></div>'
         )
@@ -173,21 +181,31 @@ def render_product_cards(product_prices, history, product_min_prices, show_histo
             )
         )
         html.append("</div>")
-        
+
         # Always include historical prices section but make it toggleable
         history_entries = history[history["Product_Name"] == name]
         if not history_entries.empty:
             # Add toggle button for historical prices
-            html.append(f'<button onclick="toggleHistory(\'{history_id}\')" class="toggle-btn mb-4 px-6 py-3 text-white text-sm font-medium rounded-xl transition-all duration-300 flex items-center gap-3 shadow-lg hover:shadow-xl">')
-            html.append('<svg class="w-5 h-5 transition-transform duration-300" id="icon-' + history_id + '" fill="none" stroke="currentColor" viewBox="0 0 24 24">')
-            html.append('<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>')
-            html.append('</svg>')
-            html.append('📊 Afficher l\'historique des prix')
-            html.append('</button>')
-            
+            html.append(
+                f'<button onclick="toggleHistory(\'{history_id}\')" class="toggle-btn mb-4 px-6 py-3 text-white text-sm font-medium rounded-xl transition-all duration-300 flex items-center gap-3 shadow-lg hover:shadow-xl">'
+            )
+            html.append(
+                '<svg class="w-5 h-5 transition-transform duration-300" id="icon-'
+                + history_id
+                + '" fill="none" stroke="currentColor" viewBox="0 0 24 24">'
+            )
+            html.append(
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>'
+            )
+            html.append("</svg>")
+            html.append("📊 Afficher l'historique des prix")
+            html.append("</button>")
+
             # Historical prices section - hidden by default
             html.append(f'<div id="{history_id}" class="historical-prices hidden">')
-            html.append('<div class="font-semibold text-slate-300 mb-3 text-lg flex items-center gap-2">📈 Historique des prix :</div>')
+            html.append(
+                '<div class="font-semibold text-slate-300 mb-3 text-lg flex items-center gap-2">📈 Historique des prix :</div>'
+            )
             html.append('<ul class="text-sm text-slate-400 space-y-3">')
             for _, h in history_entries.iterrows():
                 timestamp = (
@@ -247,12 +265,18 @@ def render_product_cards(product_prices, history, product_min_prices, show_histo
             html.append("</div>")  # End historical prices section
         else:
             # Still show button even if no history, but disabled
-            html.append('<button disabled class="mb-4 px-6 py-3 bg-slate-800/70 text-slate-500 text-sm rounded-xl cursor-not-allowed flex items-center gap-3 opacity-60 border border-slate-700/50">')
-            html.append('<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">')
-            html.append('<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>')
-            html.append('</svg>')
-            html.append('❌ Aucun historique disponible')
-            html.append('</button>')
+            html.append(
+                '<button disabled class="mb-4 px-6 py-3 bg-slate-800/70 text-slate-500 text-sm rounded-xl cursor-not-allowed flex items-center gap-3 opacity-60 border border-slate-700/50">'
+            )
+            html.append(
+                '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">'
+            )
+            html.append(
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>'
+            )
+            html.append("</svg>")
+            html.append("❌ Aucun historique disponible")
+            html.append("</button>")
         html.append("</div>")
     html.append("</div>")
     return "\n".join(html)

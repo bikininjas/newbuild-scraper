@@ -5,8 +5,18 @@ def render_price_history_graph_from_series(timestamps, prices, product_name):
     def format_french_date(dtstr):
         """Format timestamp to French date style"""
         MONTHS_FR = [
-            "janv", "févr", "mars", "avr", "mai", "juin", 
-            "juil", "août", "sept", "oct", "nov", "déc"
+            "janv",
+            "févr",
+            "mars",
+            "avr",
+            "mai",
+            "juin",
+            "juil",
+            "août",
+            "sept",
+            "oct",
+            "nov",
+            "déc",
         ]
         try:
             if "T" in dtstr:
@@ -42,10 +52,10 @@ def render_price_history_graph_from_series(timestamps, prices, product_name):
             )
 
     indicator_html, _ = get_price_evolution_indicator(prices)
-    
+
     # Format timestamps to French date style
     formatted_timestamps = [format_french_date(ts) for ts in timestamps]
-    
+
     data = {
         "labels": formatted_timestamps,
         "datasets": [
@@ -68,30 +78,30 @@ def render_price_history_graph_from_series(timestamps, prices, product_name):
             "plugins": {
                 "legend": {
                     "display": True,
-                    "labels": {"color": "#e2e8f0", "font": {"size": 11}}
+                    "labels": {"color": "#e2e8f0", "font": {"size": 11}},
                 },
                 "title": {
                     "display": True,
                     "text": f"Historique - {product_name}",
                     "color": "#06b6d4",
-                    "font": {"size": 14, "weight": "bold"}
-                }
+                    "font": {"size": 14, "weight": "bold"},
+                },
             },
             "scales": {
                 "x": {
                     "ticks": {"color": "#94a3b8", "font": {"size": 9}},
-                    "grid": {"color": "rgba(148, 163, 184, 0.1)"}
+                    "grid": {"color": "rgba(148, 163, 184, 0.1)"},
                 },
                 "y": {
                     "beginAtZero": True,
                     "ticks": {"color": "#94a3b8", "font": {"size": 9}},
-                    "grid": {"color": "rgba(148, 163, 184, 0.1)"}
-                }
+                    "grid": {"color": "rgba(148, 163, 184, 0.1)"},
+                },
             },
             "elements": {
                 "point": {"hoverBackgroundColor": "#06b6d4"},
-                "line": {"borderCapStyle": "round"}
-            }
+                "line": {"borderCapStyle": "round"},
+            },
         },
     }
     chart_json = json.dumps(chart_config)
@@ -99,7 +109,7 @@ def render_price_history_graph_from_series(timestamps, prices, product_name):
     html = f'<div class="flex items-center gap-2 mb-2"><span class="font-semibold text-slate-300">{product_name}</span>{indicator_html}</div>'
     html += f'<div class="chart-bg p-4 rounded-xl">'
     html += f'<canvas id="{canvas_id}" class="w-full h-32" aria-label="Price history graph for {product_name}" role="img"></canvas>'
-    html += f'</div>'
+    html += f"</div>"
     html += f'<script>new Chart(document.getElementById("{canvas_id}"), {chart_json});</script>'
     return html
 

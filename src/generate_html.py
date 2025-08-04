@@ -18,6 +18,7 @@ def normalize_and_filter_prices(entries, name):
             continue
     return valid_entries
 
+
 def get_category_best(product_prices):
     category_best = {}
     for name, entries in product_prices.items():
@@ -26,7 +27,9 @@ def get_category_best(product_prices):
             continue
         best = min(valid_entries, key=lambda x: float(x["price"]))
         cat = get_category(name, best["url"])
-        if cat not in category_best or float(best["price"]) < float(category_best[cat]["price"]):
+        if cat not in category_best or float(best["price"]) < float(
+            category_best[cat]["price"]
+        ):
             category_best[cat] = {
                 "name": name,
                 "price": best["price"],
@@ -35,19 +38,25 @@ def get_category_best(product_prices):
         product_prices[name] = valid_entries
     return category_best, product_prices
 
+
 def extract_timestamps(history):
     if "Timestamp_ISO" in history.columns:
         ts_col = history["Timestamp_ISO"]
     else:
         ts_col = history["Date"]
-    return sorted({str(ts) for ts in ts_col if isinstance(ts, str) and ts.strip() and ts != "nan"})
+    return sorted(
+        {str(ts) for ts in ts_col if isinstance(ts, str) and ts.strip() and ts != "nan"}
+    )
+
 
 def get_product_min_price_series(category_best, history, timestamps):
     product_min_prices = {}
     for cat, info in category_best.items():
         name = info["name"]
         product_history = history[history["Product_Name"] == name]
-        ts_col_name = "Timestamp_ISO" if "Timestamp_ISO" in product_history.columns else "Date"
+        ts_col_name = (
+            "Timestamp_ISO" if "Timestamp_ISO" in product_history.columns else "Date"
+        )
         product_history = product_history.sort_values(by=ts_col_name)
         prices = []
         ts_labels = []
@@ -64,6 +73,7 @@ def get_product_min_price_series(category_best, history, timestamps):
         product_min_prices[name] = {"timestamps": ts_labels, "prices": prices}
     return product_min_prices
 
+
 def get_total_price_history(product_min_prices, timestamps):
     total_history = []
     absolute_best = {}
@@ -77,9 +87,14 @@ def get_total_price_history(product_min_prices, timestamps):
             if i == len(timestamps) - 1:
                 total += absolute_best.get(name, 0)
             else:
-                total += ts_price_dict.get(ts, 0) if ts_price_dict.get(ts, 0) is not None else 0
+                total += (
+                    ts_price_dict.get(ts, 0)
+                    if ts_price_dict.get(ts, 0) is not None
+                    else 0
+                )
         total_history.append({"timestamp": ts, "total": round(total, 2)})
     return total_history, absolute_best
+
 
 def _get_evolution_html(total_history):
     if len(total_history) >= 2:
@@ -94,11 +109,25 @@ def _get_evolution_html(total_history):
             return f'<div class="text-center text-red-400 font-semibold mb-4 text-lg">📉 ▲ +{diff:.2f}€ (plus cher)</div>'
     return ""
 
+
 def _get_formatted_labels(total_history):
     from datetime import datetime
+
     MONTHS_FR = [
-        "janv", "févr", "mars", "avr", "mai", "juin", "juil", "août", "sept", "oct", "nov", "déc"
+        "janv",
+        "févr",
+        "mars",
+        "avr",
+        "mai",
+        "juin",
+        "juil",
+        "août",
+        "sept",
+        "oct",
+        "nov",
+        "déc",
     ]
+
     def format_french_short(dtstr):
         try:
             if "T" in dtstr:
@@ -109,44 +138,63 @@ def _get_formatted_labels(total_history):
             return f"{dt.day:02d} {month} {dt.year} - {dt.hour:02d}:{dt.minute:02d}"
         except Exception:
             return dtstr
+
     return [format_french_short(x["timestamp"]) for x in total_history]
+
 
 def _get_product_graph_datasets(product_min_prices, total_history):
     colors = [
-        "#06b6d4", "#f59e42", "#ef4444", "#8b5cf6", "#10b981",
-        "#f43f5e", "#eab308", "#84cc16", "#14b8a6", "#ec4899"
+        "#06b6d4",
+        "#f59e42",
+        "#ef4444",
+        "#8b5cf6",
+        "#10b981",
+        "#f43f5e",
+        "#eab308",
+        "#84cc16",
+        "#14b8a6",
+        "#ec4899",
     ]
     datasets = []
     for idx, (name, data) in enumerate(product_min_prices.items()):
         if data["timestamps"] and data["prices"]:
-            datasets.append({
-                "label": name,
-                "data": data["prices"],
-                "fill": False,
-                "borderColor": colors[idx % len(colors)],
-                "backgroundColor": colors[idx % len(colors)],
-                "borderWidth": 2,
-                "tension": 0.4,
-                "pointRadius": 0,
-                "hidden": False,
-            })
-    datasets.append({
-        "label": "Prix Total (€)",
-        "data": [x["total"] for x in total_history],
-        "fill": False,
-        "borderColor": "#10b981",
-        "backgroundColor": "#059669",
-        "borderWidth": 3,
-        "tension": 0.4,
-        "pointRadius": 3,
-        "pointHoverRadius": 6,
-        "order": 1,
-    })
+            datasets.append(
+                {
+                    "label": name,
+                    "data": data["prices"],
+                    "fill": False,
+                    "borderColor": colors[idx % len(colors)],
+                    "backgroundColor": colors[idx % len(colors)],
+                    "borderWidth": 2,
+                    "tension": 0.4,
+                    "pointRadius": 0,
+                    "hidden": False,
+                }
+            )
+    datasets.append(
+        {
+            "label": "Prix Total (€)",
+            "data": [x["total"] for x in total_history],
+            "fill": False,
+            "borderColor": "#10b981",
+            "backgroundColor": "#059669",
+            "borderWidth": 3,
+            "tension": 0.4,
+            "pointRadius": 3,
+            "pointHoverRadius": 6,
+            "order": 1,
+        }
+    )
     return datasets
 
-def _render_html(category_best, history, product_prices, product_min_prices, total_history):
+
+def _render_html(
+    category_best, history, product_prices, product_min_prices, total_history
+):
     formatted_labels = _get_formatted_labels(total_history)
-    product_graph_datasets = _get_product_graph_datasets(product_min_prices, total_history)
+    product_graph_datasets = _get_product_graph_datasets(
+        product_min_prices, total_history
+    )
     chart_config = {
         "type": "line",
         "data": {"labels": formatted_labels, "datasets": product_graph_datasets},
@@ -155,30 +203,30 @@ def _render_html(category_best, history, product_prices, product_min_prices, tot
             "plugins": {
                 "legend": {
                     "display": True,
-                    "labels": {"color": "#e2e8f0", "font": {"size": 12}}
+                    "labels": {"color": "#e2e8f0", "font": {"size": 12}},
                 },
                 "title": {
                     "display": True,
                     "text": "Historique du prix total",
                     "color": "#06b6d4",
-                    "font": {"size": 16, "weight": "bold"}
-                }
+                    "font": {"size": 16, "weight": "bold"},
+                },
             },
             "scales": {
                 "x": {
                     "ticks": {"color": "#94a3b8", "font": {"size": 10}},
-                    "grid": {"color": "rgba(148, 163, 184, 0.1)"}
+                    "grid": {"color": "rgba(148, 163, 184, 0.1)"},
                 },
                 "y": {
                     "beginAtZero": False,
                     "ticks": {"color": "#94a3b8", "font": {"size": 10}},
-                    "grid": {"color": "rgba(148, 163, 184, 0.1)"}
-                }
+                    "grid": {"color": "rgba(148, 163, 184, 0.1)"},
+                },
             },
             "elements": {
                 "point": {"hoverBackgroundColor": "#06b6d4"},
-                "line": {"borderCapStyle": "round"}
-            }
+                "line": {"borderCapStyle": "round"},
+            },
         },
     }
     chart_json = json.dumps(chart_config)
@@ -234,28 +282,36 @@ def _render_html(category_best, history, product_prices, product_min_prices, tot
     html.append(render_summary_table(category_best, history))
     # Call render_product_cards - historical prices are now toggleable with buttons
     html.append(render_product_cards(product_prices, history, product_min_prices))
-    
+
     # Add JavaScript for toggle functionality
-    html.append('<script>')
-    html.append('function toggleHistory(historyId) {')
-    html.append('    const historyDiv = document.getElementById(historyId);')
+    html.append("<script>")
+    html.append("function toggleHistory(historyId) {")
+    html.append("    const historyDiv = document.getElementById(historyId);")
     html.append('    const icon = document.getElementById("icon-" + historyId);')
-    html.append('    const button = icon.parentElement;')
-    html.append('    ')
+    html.append("    const button = icon.parentElement;")
+    html.append("    ")
     html.append('    if (historyDiv.classList.contains("hidden")) {')
     html.append('        historyDiv.classList.remove("hidden");')
     html.append('        icon.style.transform = "rotate(180deg)";')
-    html.append('        const textNode = Array.from(button.childNodes).find(node => node.nodeType === 3 && node.textContent.includes("Afficher"));')
-    html.append('        if (textNode) textNode.textContent = "Masquer l\'historique des prix";')
-    html.append('    } else {')
+    html.append(
+        '        const textNode = Array.from(button.childNodes).find(node => node.nodeType === 3 && node.textContent.includes("Afficher"));'
+    )
+    html.append(
+        '        if (textNode) textNode.textContent = "Masquer l\'historique des prix";'
+    )
+    html.append("    } else {")
     html.append('        historyDiv.classList.add("hidden");')
     html.append('        icon.style.transform = "rotate(0deg)";')
-    html.append('        const textNode = Array.from(button.childNodes).find(node => node.nodeType === 3 && node.textContent.includes("Masquer"));')
-    html.append('        if (textNode) textNode.textContent = "Afficher l\'historique des prix";')
-    html.append('    }')
-    html.append('}')
-    html.append('</script>')
-    
+    html.append(
+        '        const textNode = Array.from(button.childNodes).find(node => node.nodeType === 3 && node.textContent.includes("Masquer"));'
+    )
+    html.append(
+        '        if (textNode) textNode.textContent = "Afficher l\'historique des prix";'
+    )
+    html.append("    }")
+    html.append("}")
+    html.append("</script>")
+
     html.append("</body></html>")
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     output_path = os.path.join(project_root, "output.html")
@@ -269,12 +325,12 @@ def _get_latest_price_for_url(history, name, url):
     rows = history[(history["Product_Name"] == name) & (history["URL"] == url)]
     if rows.empty:
         return None
-    
+
     # Sort by timestamp (use Timestamp_ISO if available, otherwise Date)
     timestamp_col = "Timestamp_ISO" if "Timestamp_ISO" in rows.columns else "Date"
     rows = rows.sort_values(by=timestamp_col, ascending=False)
     latest = rows.iloc[0]
-    
+
     # Validate price
     try:
         price_val = float(latest["Price"])
@@ -282,36 +338,44 @@ def _get_latest_price_for_url(history, name, url):
             return {"price": latest["Price"], "url": url}
     except (ValueError, TypeError):
         pass
-    
+
     return None
 
 
 def build_product_prices(products, history):
     """Build product prices dictionary from products and history data."""
     product_prices = {}
-    
+
     for name, urls in products.items():
         entries = []
         for url in urls:
             price_entry = _get_latest_price_for_url(history, name, url)
             if price_entry:
                 entries.append(price_entry)
-        
+
         if entries:
             product_prices[name] = entries
-    
+
     return product_prices
+
 
 def generate_html(product_prices, history):
     # Ensure all helpers are defined before use
     category_best, product_prices = get_category_best(product_prices)
     timestamps = extract_timestamps(history)
-    product_min_prices = get_product_min_price_series(category_best, history, timestamps)
+    product_min_prices = get_product_min_price_series(
+        category_best, history, timestamps
+    )
     total_history, _ = get_total_price_history(
-        {name: dict(zip(data["timestamps"], data["prices"])) for name, data in product_min_prices.items()},
+        {
+            name: dict(zip(data["timestamps"], data["prices"]))
+            for name, data in product_min_prices.items()
+        },
         timestamps,
     )
-    _render_html(category_best, history, product_prices, product_min_prices, total_history)
+    _render_html(
+        category_best, history, product_prices, product_min_prices, total_history
+    )
 
 
 def main():
