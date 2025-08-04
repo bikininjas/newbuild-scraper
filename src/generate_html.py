@@ -287,8 +287,6 @@ def generate_html(product_prices, history):
             "scales": {"y": {"beginAtZero": False}},
         },
     }
-    import json
-
     chart_json = json.dumps(chart_config)
     html = [
         "<!DOCTYPE html>",

@@ -129,7 +129,6 @@ def get_price_playwright(url, site_selectors):
             content = page.content()
             soup = BeautifulSoup(content, "html.parser")
             # ...existing code...
-            import re
 
             def close_and_return(val):
                 browser.close()
