@@ -21,10 +21,18 @@ jobs:
             echo "output.html is empty. Skipping upload."
             exit 1
           fi
-          # Check for required info (example: <title>, <body>, and at least one <table>)
-          grep -q '<title>' output.html || exit 1
-          grep -q '<body>' output.html || exit 1
-          grep -q '<ul' output.html || exit 1
+          if ! grep -q '<title>' output.html; then
+            echo "output.html missing <title> tag."
+            exit 1
+          fi
+          if ! grep -q '<body>' output.html; then
+            echo "output.html missing <body> tag."
+            exit 1
+          fi
+          if ! grep -q '<ul' output.html; then
+            echo "output.html missing <ul> tag."
+            exit 1
+          fi
 
       - name: Set up authentication
         id: 'auth'
