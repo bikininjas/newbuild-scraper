@@ -129,7 +129,6 @@ def get_price_playwright(url, site_selectors):
             content = page.content()
             soup = BeautifulSoup(content, "html.parser")
             # ...existing code...
-            import re
 
             for selector in site_selectors:
                 price_elems = soup.select(selector)
