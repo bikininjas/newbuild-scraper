@@ -94,16 +94,20 @@ def get_price_playwright(url, site_selectors):
             # Emulate user actions for pccomponentes.fr
             if "pccomponentes.fr" in url:
                 try:
-                    page.mouse.move(100, 200)
-                    page.mouse.move(200, 300)
-                    page.mouse.move(300, 400)
-                    page.mouse.move(400, 500)
-                    page.mouse.move(500, 600)
-                    page.mouse.move(600, 700)
-                    page.mouse.move(700, 800)
-                    page.mouse.move(800, 900)
-                    page.mouse.move(900, 1000)
-                    page.mouse.move(1000, 1100)
+                    mouse_moves = [
+                        (100, 200),
+                        (200, 300),
+                        (300, 400),
+                        (400, 500),
+                        (500, 600),
+                        (600, 700),
+                        (700, 800),
+                        (800, 900),
+                        (900, 1000),
+                        (1000, 1100),
+                    ]
+                    for x, y in mouse_moves:
+                        page.mouse.move(x, y)
                     page.keyboard.press("PageDown")
                     page.keyboard.press("PageDown")
                     page.keyboard.press("ArrowDown")
