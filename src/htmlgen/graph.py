@@ -1,3 +1,44 @@
+def get_price_evolution_indicator(prices, color_scheme="slate"):
+    """
+    Returns (indicator_html, aria_label).
+    color_scheme: 'slate' (for charts) or 'gray' (for tables).
+    """
+    if color_scheme == "slate":
+        colors = {
+            "no_change": "text-slate-400",
+            "down": "text-green-400", 
+            "up": "text-red-400"
+        }
+    else:  # gray scheme
+        colors = {
+            "no_change": "text-gray-400",
+            "down": "text-green-600",
+            "up": "text-red-600"
+        }
+    
+    if len(prices) < 2 or prices[-1] is None or prices[-2] is None:
+        return (
+            f'<span class="{colors["no_change"]}" aria-label="No change">–</span>',
+            "No change",
+        )
+    last, prev = prices[-1], prices[-2]
+    if last < prev:
+        return (
+            f'<span class="{colors["down"]}" aria-label="Price down">↓</span>',
+            "Price down",
+        )
+    elif last > prev:
+        return (
+            f'<span class="{colors["up"]}" aria-label="Price up">↑</span>',
+            "Price up",
+        )
+    else:
+        return (
+            f'<span class="{colors["no_change"]}" aria-label="No change">–</span>',
+            "No change",
+        )
+
+
 def render_price_history_graph_from_series(timestamps, prices, product_name):
     import json
     import sys
@@ -6,30 +47,7 @@ def render_price_history_graph_from_series(timestamps, prices, product_name):
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from utils import format_french_date
 
-    def get_price_evolution_indicator(prices):
-        if len(prices) < 2 or prices[-1] is None or prices[-2] is None:
-            return (
-                '<span class="text-slate-400" aria-label="No change">–</span>',
-                "No change",
-            )
-        last, prev = prices[-1], prices[-2]
-        if last < prev:
-            return (
-                '<span class="text-green-400" aria-label="Price down">↓</span>',
-                "Price down",
-            )
-        elif last > prev:
-            return (
-                '<span class="text-red-400" aria-label="Price up">↑</span>',
-                "Price up",
-            )
-        else:
-            return (
-                '<span class="text-slate-400" aria-label="No change">–</span>',
-                "No change",
-            )
-
-    indicator_html, _ = get_price_evolution_indicator(prices)
+    indicator_html, _ = get_price_evolution_indicator(prices, "slate")
 
     # Format timestamps to French date style
     formatted_timestamps = [format_french_date(ts) for ts in timestamps]
@@ -122,28 +140,6 @@ def get_best_price_per_timestamp(product_history, ts_col, product_name):
     return timestamps, best_prices
 
 
-def get_price_evolution_indicator(prices):
-    # Returns (indicator_html, aria_label)
-    if len(prices) < 2 or prices[-1] is None or prices[-2] is None:
-        return (
-            '<span class="text-gray-400" aria-label="No change">–</span>',
-            "No change",
-        )
-    last, prev = prices[-1], prices[-2]
-    if last < prev:
-        return (
-            '<span class="text-green-600" aria-label="Price down">↓</span>',
-            "Price down",
-        )
-    elif last > prev:
-        return '<span class="text-red-600" aria-label="Price up">↑</span>', "Price up"
-    else:
-        return (
-            '<span class="text-gray-400" aria-label="No change">–</span>',
-            "No change",
-        )
-
-
 def render_price_history_graph(history, product_name):
     ts_col = "Timestamp_ISO" if "Timestamp_ISO" in history.columns else "Date"
     product_history = history[history["Product_Name"] == product_name]
@@ -156,7 +152,7 @@ def render_price_history_graph(history, product_name):
         for i, p in enumerate(best_prices)
     ]
     # Evolution indicator
-    indicator_html, _ = get_price_evolution_indicator(prices)
+    indicator_html, _ = get_price_evolution_indicator(prices, "gray")
     data = {
         "labels": timestamps,
         "datasets": [
@@ -219,7 +215,7 @@ def render_all_price_graphs(product_prices, history):
             p if p is not None else (prices[i - 1] if i > 0 else None)
             for i, p in enumerate(best_prices)
         ]
-        indicator_html, _ = get_price_evolution_indicator(prices)
+        indicator_html, _ = get_price_evolution_indicator(prices, "gray")
         data = {
             "labels": timestamps,
             "datasets": [

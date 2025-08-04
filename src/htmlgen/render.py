@@ -125,6 +125,10 @@ def render_product_cards(
     product_prices, history, product_min_prices, show_history=True
 ):
     from .graph import render_price_history_graph
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from utils import format_french_date_full
 
     html = []
     html.append('<div class="grid gap-8">')
@@ -207,36 +211,9 @@ def render_product_cards(
                     isinstance(norm_price, float) and math.isnan(norm_price)
                 ):
                     continue
-                from datetime import datetime
-
-                def format_french_date(dtstr):
-                    try:
-                        if "T" in dtstr:
-                            dt = datetime.fromisoformat(dtstr.split(".")[0])
-                        else:
-                            dt = datetime.strptime(dtstr, "%Y-%m-%d %H:%M:%S")
-                        months = [
-                            "janvier",
-                            "février",
-                            "mars",
-                            "avril",
-                            "mai",
-                            "juin",
-                            "juillet",
-                            "août",
-                            "septembre",
-                            "octobre",
-                            "novembre",
-                            "décembre",
-                        ]
-                        month = months[dt.month - 1]
-                        return (
-                            f"{dt.day} {month} {dt.year}, {dt.hour:02d}:{dt.minute:02d}"
-                        )
-                    except Exception:
-                        return dtstr
-
-                ts_fmt = format_french_date(str(timestamp))
+                
+                # Use shared French date formatting function
+                ts_fmt = format_french_date_full(str(timestamp))
                 html.append(
                     f'<li class="history-item mb-2 p-3 rounded-xl transition-all duration-300">{ts_fmt}: <span class="font-bold text-green-400">{norm_price}€</span> @ <a href="{h["URL"]}" target="_blank" class="text-cyan-400 hover:text-cyan-300 underline transition-colors ml-2">{get_site_label(h["URL"])}</a></li>'
                 )

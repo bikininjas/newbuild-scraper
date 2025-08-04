@@ -45,7 +45,7 @@ def format_french_date(dtstr):
             dt = datetime.strptime(dtstr, "%Y-%m-%d %H:%M:%S")
         month = MONTHS_FR[dt.month - 1]
         return f"{dt.day:02d} {month} {dt.year} - {dt.hour:02d}:{dt.minute:02d}"
-    except Exception:
+    except (ValueError, TypeError, IndexError):
         return dtstr
 
 
@@ -58,14 +58,14 @@ def format_french_date_full(dtstr):
             dt = datetime.strptime(dtstr, "%Y-%m-%d %H:%M:%S")
         month = MONTHS_FR_FULL[dt.month - 1]
         return f"{dt.day} {month} {dt.year}, {dt.hour:02d}:{dt.minute:02d}"
-    except Exception:
+    except (ValueError, TypeError, IndexError):
         return dtstr
 
 
 def get_user_agent():
     try:
         return UserAgent().random
-    except Exception:
+    except (ImportError, AttributeError, ConnectionError):
         return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
 
 
@@ -75,7 +75,7 @@ def clean_price(raw):
     price = raw.replace("€", "").replace(",", ".").replace(" ", "").strip()
     try:
         return float(price)
-    except Exception:
+    except (ValueError, TypeError):
         return None
 
 
