@@ -48,8 +48,11 @@ def add_stealth_scripts(page):
     """Add stealth JavaScript to hide automation detection."""
     import os
     js_path = os.path.join(os.path.dirname(__file__), "stealth.js")
-    with open(js_path, "r", encoding="utf-8") as js_file:
-        stealth_js = js_file.read()
+    try:
+        with open(js_path, "r", encoding="utf-8") as js_file:
+            stealth_js = js_file.read()
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Stealth JavaScript file not found at {js_path}. Please ensure 'stealth.js' exists in the same directory as 'stealth.py'.")
     page.add_init_script(stealth_js)
 
 

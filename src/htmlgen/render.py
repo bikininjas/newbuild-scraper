@@ -5,6 +5,8 @@ HTML rendering for summary table, product cards, and graphs.
 import sys
 import os
 import math
+import pandas as pd
+import numpy as np
 from .normalize import normalize_price, get_category, get_site_label
 from .graph import render_price_history_graph
 from ..utils import format_french_date_full
@@ -29,14 +31,7 @@ def render_summary_table(category_best, history):
         '<th class="px-6 py-4 text-left text-sm font-semibold text-slate-200 bg-slate-900/70">Vu Le</th>'
         "</tr></thead><tbody>"
     )
-    import pandas as pd
-    import numpy as np
-    import sys
-    import os
-
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from utils import format_french_date_full
-
+    
     for cat, info in category_best.items():
         name = info["name"]
         price = float(info["price"])

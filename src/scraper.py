@@ -159,7 +159,3 @@ def get_price_playwright(url, site_selectors):
     except Exception as e:
         logging.error(f"Playwright error for {url}: {e}")
     return None
-
-
-# Maintain backward compatibility by re-exporting the original function
-get_site_selector = get_site_selector

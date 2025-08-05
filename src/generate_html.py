@@ -2,6 +2,7 @@ from htmlgen.data import load_products, load_history
 from htmlgen.normalize import normalize_price, get_category, get_site_label
 from htmlgen.render import render_summary_table, render_product_cards
 from htmlgen.graph import render_all_price_graphs
+from utils import format_french_date
 import os
 import json
 
@@ -111,8 +112,6 @@ def _get_evolution_html(total_history):
 
 
 def _get_formatted_labels(total_history):
-    from utils import format_french_date
-
     return [format_french_date(x["timestamp"]) for x in total_history]
 
 
