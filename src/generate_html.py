@@ -295,7 +295,16 @@ def _render_html(
 
 
 def _get_latest_price_for_url(history, name, url):
-    """Extract the latest valid price for a specific product and URL."""
+    """
+    Extract the latest valid price for a specific product and URL.
+    Parameters:
+        history (pandas.DataFrame): DataFrame containing price history data.
+        name (str): The name of the product.
+        url (str): The URL of the product.
+    Returns:
+        dict or None: Returns a dictionary with keys 'price' and 'url' if a valid price is found.
+        Returns None if no valid price entry exists for the given product and URL.
+    """
     rows = history[(history["Product_Name"] == name) & (history["URL"] == url)]
     if rows.empty:
         return None

@@ -46,34 +46,11 @@ def get_stealth_context_options():
 
 def add_stealth_scripts(page):
     """Add stealth JavaScript to hide automation detection."""
-    page.add_init_script("""
-        Object.defineProperty(navigator, 'webdriver', {
-            get: () => undefined,
-        });
-        
-        // Override the plugins property to use a fake value
-        Object.defineProperty(navigator, 'plugins', {
-            get: () => [1, 2, 3, 4, 5],
-        });
-        
-        // Override the languages property to use a fake value
-        Object.defineProperty(navigator, 'languages', {
-            get: () => ['fr-FR', 'fr', 'en-US', 'en'],
-        });
-        
-        // Override chrome runtime
-        window.chrome = {
-            runtime: {},
-        };
-        
-        // Mock permissions
-        const originalQuery = window.navigator.permissions.query;
-        window.navigator.permissions.query = (parameters) => (
-            parameters.name === 'notifications' ?
-                Promise.resolve({ state: Notification.permission }) :
-                originalQuery(parameters)
-        );
-    """)
+    import os
+    js_path = os.path.join(os.path.dirname(__file__), "stealth.js")
+    with open(js_path, "r", encoding="utf-8") as js_file:
+        stealth_js = js_file.read()
+    page.add_init_script(stealth_js)
 
 
 def should_use_stealth_mode(url):

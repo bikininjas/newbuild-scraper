@@ -1,4 +1,5 @@
 import logging
+import requests
 from fake_useragent import UserAgent
 from datetime import datetime
 
@@ -65,7 +66,7 @@ def format_french_date_full(dtstr):
 def get_user_agent():
     try:
         return UserAgent().random
-    except (ImportError, AttributeError, ConnectionError):
+    except (ImportError, AttributeError, requests.exceptions.RequestException, TimeoutError):
         return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
 
 

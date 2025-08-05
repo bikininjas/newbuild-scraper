@@ -2,8 +2,15 @@
 HTML rendering for summary table, product cards, and graphs.
 """
 
+import sys
+import os
 import math
 from .normalize import normalize_price, get_category, get_site_label
+from .graph import render_price_history_graph
+from ..utils import format_french_date_full
+
+# Constants
+DIV_CLOSE_TAG = "</div>"
 
 
 def render_summary_table(category_best, history):
@@ -122,14 +129,8 @@ def render_summary_table(category_best, history):
 
 
 def render_product_cards(
-    product_prices, history, product_min_prices, show_history=True
+    product_prices, history, product_min_prices
 ):
-    from .graph import render_price_history_graph
-    import sys
-    import os
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from utils import format_french_date_full
-
     html = []
     html.append('<div class="grid gap-8">')
     for name, entries in product_prices.items():
@@ -163,7 +164,7 @@ def render_product_cards(
                 min_price_data["timestamps"], min_price_data["prices"], name
             )
         )
-        html.append("</div>")
+        html.append(DIV_CLOSE_TAG)
 
         # Always include historical prices section but make it toggleable
         history_entries = history[history["Product_Name"] == name]
@@ -218,7 +219,7 @@ def render_product_cards(
                     f'<li class="history-item mb-2 p-3 rounded-xl transition-all duration-300">{ts_fmt}: <span class="font-bold text-green-400">{norm_price}€</span> @ <a href="{h["URL"]}" target="_blank" class="text-cyan-400 hover:text-cyan-300 underline transition-colors ml-2">{get_site_label(h["URL"])}</a></li>'
                 )
             html.append("</ul>")
-            html.append("</div>")  # End historical prices section
+            html.append(DIV_CLOSE_TAG)  # End historical prices section
         else:
             # Still show button even if no history, but disabled
             html.append(
@@ -233,6 +234,6 @@ def render_product_cards(
             html.append("</svg>")
             html.append("❌ Aucun historique disponible")
             html.append("</button>")
-        html.append("</div>")
-    html.append("</div>")
+        html.append(DIV_CLOSE_TAG)
+    html.append(DIV_CLOSE_TAG)
     return "\n".join(html)

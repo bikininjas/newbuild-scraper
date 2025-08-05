@@ -1,5 +1,6 @@
 """Refactored scraper with modular site and anti-bot handling."""
 
+import sys
 import time
 import random
 import logging
@@ -104,7 +105,7 @@ def get_price_playwright(url, site_selectors):
     """Get price using Playwright (more reliable for protected sites)."""
     is_topachat = is_site_supported(url, "topachat.com")
     use_stealth = should_use_stealth_mode(url)
-    import sys
+    
     try:
         with sync_playwright() as p:
             # Always use headless mode on Linux runners to avoid X server errors

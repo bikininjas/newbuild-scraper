@@ -18,85 +18,52 @@ PCCOMPONENTES_MOUSE_MOVES = [
 ]
 
 
-def handle_pccomponentes_cookies(page):
-    """Handle cookie consent popup for PCComponentes."""
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error as PlaywrightError
+
+def handle_pccomponentes_behavior(page, url):
+    """Handle PCComponentes-specific behavior including cookie consent."""
     try:
-        # Wait longer for the page to fully load and any consent popups to appear
-        page.wait_for_timeout(3000)
-        
-        # Check for common anti-bot protection patterns first
-        content = page.content()
-        if any(term in content.lower() for term in ['cloudflare', 'checking your browser', 'please wait', 'verification']):
-            logging.warning("[PCComponentes] Anti-bot protection detected, waiting longer...")
-            page.wait_for_timeout(10000)  # Wait 10 seconds for Cloudflare/similar
-        
-        # Common cookie consent selectors to try (most specific first)
-        cookie_selectors = [
-            '.button_styledChild__14nwxvlr',  # PCComponentes specific consent button
-            '#onetrust-accept-btn-handler',  # OneTrust cookie banner
-            '.ot-sdk-show-settings',  # OneTrust settings
-            'button[data-testid="accept-all"]',  # Accept all button
-            'button[aria-label*="Accept"]',  # Aria label accept
-            'button[title*="Accept"]',  # Title accept
-            'button[id*="accept"]',  # Any button with 'accept' in id
-            'button[class*="accept"]',  # Any button with 'accept' in class
-            'button[class*="consent"]',  # Any button with 'consent' in class
-            '.consent-accept',  # Generic consent accept
-            '.cookie-accept',  # Generic cookie accept
-            '[data-cy="accept-all"]',  # Cypress data attribute
-            '[data-testid*="accept"]',  # TestID accept
-            '#didomi-notice-agree-button',  # Didomi consent manager
-            '.didomi-continue-without-agreeing',  # Didomi alternative
-            '.cmp-accept-all',  # CMP (Consent Management Platform)
-            '.gdpr-accept',  # GDPR accept button
-        ]
-        
-        for selector in cookie_selectors:
-            try:
-                # Check if the element exists and is visible
-                element = page.locator(selector)
-                if element.is_visible(timeout=2000):
-                    logging.info(f"[PCComponentes] Found cookie consent button with selector: {selector}")
-                    # Scroll to element to ensure it's in view
-                    element.scroll_into_view_if_needed()
-                    page.wait_for_timeout(500)
-                    element.click(timeout=3000)
-                    page.wait_for_timeout(2000)  # Wait for the popup to disappear
-                    logging.info("[PCComponentes] Successfully clicked cookie consent button")
-                    return
-            except Exception:
-                continue  # Try next selector
-                
-        # If no specific selector worked, try to find any button containing accept-like text
-        accept_texts = [
-            "accepter tout", "accept all", "tout accepter", "accepter", "accept", 
-            "j'accepte", "continuer", "continue", "ok", "fermer", "close"
-        ]
-        for text in accept_texts:
-            try:
-                element = page.locator(f'button:has-text("{text}")')
-                if element.is_visible(timeout=1000):
-                    logging.info(f"[PCComponentes] Found cookie button with text: {text}")
-                    element.scroll_into_view_if_needed()
-                    page.wait_for_timeout(500)
-                    element.click(timeout=3000)
-                    page.wait_for_timeout(2000)
-                    logging.info("[PCComponentes] Successfully clicked cookie button with text: " + text)
-                    return
-            except Exception:
-                continue
-                
-        logging.warning("[PCComponentes] No cookie consent popup found or could not be handled")
-        
+        handle_cookie_consent(page)
     except Exception as e:
-        logging.warning(f"[PCComponentes] Cookie handling failed: {e}")
+        logging.warning(f"Cookie consent handling failed for {url}: {e}")
+
+def handle_cookie_consent(page):
+    """Handle cookie consent popup with multiple selector fallbacks."""
+    logging.info("[PCComponentes] Attempting to handle cookie consent popup")
+    
+    # Common cookie consent selectors for PCComponentes
+    cookie_selectors = [
+        '#didomi-notice-agree-button',  # Didomi consent manager
+        '.didomi-notice-component-button[aria-label*="Tout accepter"]',
+        '.didomi-notice-component-button[aria-label*="Accept All"]',
+        '.didomi-button-standard',
+        '.didomi-continue-without-agreeing',  # Didomi alternative
+        '.cmp-accept-all',  # CMP (Consent Management Platform)
+        '.gdpr-accept',  # GDPR accept button
+    ]
+    
+    for selector in cookie_selectors:
+        try:
+            # Check if the element exists and is visible
+            element = page.locator(selector)
+            if element.is_visible(timeout=2000):
+                logging.info(f"[PCComponentes] Found cookie consent button with selector: {selector}")
+                # Scroll to element to ensure it's in view
+                element.scroll_into_view_if_needed()
+                page.wait_for_timeout(500)
+                element.click(timeout=3000)
+                page.wait_for_timeout(2000)  # Wait for the popup to disappear
+                logging.info("[PCComponentes] Successfully clicked cookie consent button")
+                return
+        except (PlaywrightTimeoutError, PlaywrightError):
+            continue  # Try next selector
 
 
 def emulate_pccomponentes_user(page):
     """Emulate realistic user behavior for PCComponentes."""
     try:
         # First, try to handle cookie consent popup
-        handle_pccomponentes_cookies(page)
+        handle_cookie_consent(page)
         
         # Add more natural-looking user behavior
         page.wait_for_timeout(2000)
