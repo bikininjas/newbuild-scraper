@@ -257,33 +257,7 @@ def _render_html(
     html.append(render_product_cards(product_prices, history, product_min_prices))
 
     # Add JavaScript for toggle functionality
-    html.append("<script>")
-    html.append("function toggleHistory(historyId) {")
-    html.append("    const historyDiv = document.getElementById(historyId);")
-    html.append('    const icon = document.getElementById("icon-" + historyId);')
-    html.append("    const button = icon.parentElement;")
-    html.append("    ")
-    html.append('    if (historyDiv.classList.contains("hidden")) {')
-    html.append('        historyDiv.classList.remove("hidden");')
-    html.append('        icon.style.transform = "rotate(180deg)";')
-    html.append(
-        '        const textNode = Array.from(button.childNodes).find(node => node.nodeType === 3 && node.textContent.includes("Afficher"));'
-    )
-    html.append(
-        '        if (textNode) textNode.textContent = "Masquer l\'historique des prix";'
-    )
-    html.append("    } else {")
-    html.append('        historyDiv.classList.add("hidden");')
-    html.append('        icon.style.transform = "rotate(0deg)";')
-    html.append(
-        '        const textNode = Array.from(button.childNodes).find(node => node.nodeType === 3 && node.textContent.includes("Masquer"));'
-    )
-    html.append(
-        '        if (textNode) textNode.textContent = "Afficher l\'historique des prix";'
-    )
-    html.append("    }")
-    html.append("}")
-    html.append("</script>")
+    html.append('<script src="static/toggleHistory.js"></script>')
 
     html.append("</body></html>")
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

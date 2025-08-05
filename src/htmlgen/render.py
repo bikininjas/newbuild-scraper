@@ -8,7 +8,7 @@ import math
 import pandas as pd
 import numpy as np
 from .normalize import normalize_price, get_category, get_site_label
-from .graph import render_price_history_graph
+from .graph import render_price_history_graph, render_price_history_graph_from_series
 from ..utils import format_french_date_full
 
 # Constants
@@ -152,8 +152,7 @@ def render_product_cards(
         html.append("</ul>")
         # Always add product price graph, even if there are no data points
         html.append('<div class="mt-6">')
-        from .graph import render_price_history_graph_from_series
-
+        
         html.append(
             render_price_history_graph_from_series(
                 min_price_data["timestamps"], min_price_data["prices"], name

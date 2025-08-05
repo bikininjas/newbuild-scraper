@@ -1,5 +1,6 @@
 """Browser stealth and anti-detection configurations."""
 
+from pathlib import Path
 from utils import get_user_agent
 
 
@@ -46,8 +47,7 @@ def get_stealth_context_options():
 
 def add_stealth_scripts(page):
     """Add stealth JavaScript to hide automation detection."""
-    import os
-    js_path = os.path.join(os.path.dirname(__file__), "stealth.js")
+    js_path = Path(__file__).parent / "stealth.js"
     try:
         with open(js_path, "r", encoding="utf-8") as js_file:
             stealth_js = js_file.read()

@@ -120,7 +120,6 @@ def get_price_playwright(url, site_selectors):
             context_options = setup_browser_context(use_stealth)
             context = browser.new_context(**context_options)
             page = context.new_page()
-            # ...existing code...
             
             # Add stealth scripts if needed
             if use_stealth:

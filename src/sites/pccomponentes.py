@@ -1,6 +1,7 @@
 """PCComponentes specific scraping logic."""
 
 import logging
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error as PlaywrightError
 
 
 # Mouse movement coordinates for anti-bot detection
@@ -17,8 +18,6 @@ PCCOMPONENTES_MOUSE_MOVES = [
     (1000, 1100),
 ]
 
-
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error as PlaywrightError
 
 def handle_pccomponentes_behavior(page, url):
     """Handle PCComponentes-specific behavior including cookie consent."""
