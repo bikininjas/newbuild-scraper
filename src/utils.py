@@ -66,8 +66,8 @@ def format_french_date_full(dtstr):
 def get_user_agent():
     try:
         return UserAgent().random
-    except (ImportError, AttributeError, TimeoutError):
-        return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+    except (ImportError, AttributeError):
+        return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 
 def clean_price(raw):
