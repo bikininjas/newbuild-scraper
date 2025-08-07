@@ -4,7 +4,7 @@ Chart.js graph rendering for price history.
 
 import json
 from .normalize import normalize_price
-from ..utils import format_french_date
+from utils import format_french_date
 
 # Constants
 NO_CHANGE_LABEL = "No change"

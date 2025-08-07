@@ -317,6 +317,7 @@ def build_product_prices(products, history):
 
 def generate_html(product_prices, history):
     # Ensure all helpers are defined before use
+    # Get best product per category and normalized product_prices
     category_best, product_prices = get_category_best(product_prices)
     timestamps = extract_timestamps(history)
     product_min_prices = get_product_min_price_series(
@@ -329,8 +330,24 @@ def generate_html(product_prices, history):
         },
         timestamps,
     )
+
+    # Build category_products: category → list of product dicts (sorted by price)
+    from collections import defaultdict
+    category_products = defaultdict(list)
+    for name, entries in product_prices.items():
+        for entry in entries:
+            cat = get_category(name, entry["url"])
+            category_products[cat].append({
+                "name": name,
+                "price": entry["price"],
+                "url": entry["url"]
+            })
+    # Sort each category's products by price ascending
+    for cat in category_products:
+        category_products[cat].sort(key=lambda x: float(x["price"]))
+
     _render_html(
-        category_best, history, product_prices, product_min_prices, total_history
+        category_products, history, product_prices, product_min_prices, total_history
     )
 
 

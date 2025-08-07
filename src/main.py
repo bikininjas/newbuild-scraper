@@ -5,7 +5,8 @@ import time
 import logging
 from utils import setup_logging
 from scraper import get_site_selector, get_price_requests, get_price_playwright
-
+from alerts import send_discord_alert
+from generate_html import generate_html
 # Default domains for which debug logging is enabled
 DEFAULT_DEBUG_DOMAINS = ["topachat.com"]
 
