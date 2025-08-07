@@ -27,20 +27,30 @@ To add new features or fix bugs, edit the relevant module. All scripts are auto-
 The generated HTML now includes:
 - Category summary table (cheapest product per category)
 - Total price history graph (Chart.js)
-- Product cards grid (all prices, best price, history)
+- Product cards grid (all prices, best price, **toggleable** history)
 - Individual price history graphs for each product (Chart.js)
+- **Interactive UI**: Historical price sections are hidden by default with individual toggle buttons for each product
+
+### UI Features
+
+- **Toggleable Historical Prices**: Each product card has a "Show/Hide History" button to toggle the display of historical price data
+- **Hidden by Default**: Historical price sections start hidden to reduce visual clutter
+- **Individual Controls**: Each product has its own toggle - you can show history for specific products while keeping others hidden
+- **Smooth Animations**: CSS transitions provide smooth show/hide animations
+- **Responsive Design**: Toggle functionality works across all device sizes
 
 ### How the graphs work
 
-- **Total Price History graph:** Shows the sum of the best price for each product at each timestamp. The last point always matches the sum of the absolute best prices in the table.
-- **Product Price History graph:** Shows the best price (lowest) for each product at each timestamp.
+- **Total Price History graph:** Shows the sum of the best price for each product at each timestamp. The last point always matches the sum of the absolute best prices in the table. Missing prices are interpolated by repeating the last known value for visual continuity.
+- **Product Price History graph:** Shows the best price (lowest) for each product at each timestamp. If a product's price is missing at a timestamp, the last known price is repeated for a smoother, visually appealing line.
+- **Price Evolution Indicator:** Each product graph and card now displays an indicator (green ↓ for price drop, red ↑ for price increase, gray – for no change) comparing the last price to the previous one. Indicators use accessible colors and ARIA labels for screen readers.
 
 ### Known Issues / To Fix
 
 - If a product's best price is not present at every timestamp, the graph may show flat or stepped lines. This is expected.
 - If a product is missing from the price history at a timestamp, it is excluded from the sum for that timestamp.
 - The UI and CSV parsing are robust, but edge cases (e.g., malformed CSV, missing columns) may need more error handling.
-- Cognitive complexity warnings in some functions (see lint output) should be refactored for maintainability.
+- ✅ **RESOLVED**: Cognitive complexity warnings have been addressed through code refactoring
 
 ## How to Use
 

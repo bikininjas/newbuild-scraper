@@ -5,6 +5,9 @@ import time
 import logging
 from utils import setup_logging
 from scraper import get_site_selector, get_price_requests, get_price_playwright
+import argparse
+from alerts import send_discord_alert
+from generate_html import generate_html
 
 # Default domains for which debug logging is enabled
 DEFAULT_DEBUG_DOMAINS = ["topachat.com"]
@@ -87,10 +90,6 @@ def save_new_rows(df_new, history, debug_domains=None):
             domain_rows = df_new[df_new["URL"].str.contains(domain)]
             logging.info(f"[{domain.upper()}] Rows saved to CSV: {domain_rows}")
     return history
-
-import argparse
-from alerts import send_discord_alert
-from generate_html import generate_html
 
 def main():
     parser = argparse.ArgumentParser(description="Product price scraper")
