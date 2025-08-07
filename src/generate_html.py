@@ -333,15 +333,14 @@ def generate_html(product_prices, history):
 
     # Build category_products: category → list of product dicts (sorted by price)
     from collections import defaultdict
+
     category_products = defaultdict(list)
     for name, entries in product_prices.items():
         for entry in entries:
             cat = get_category(name, entry["url"])
-            category_products[cat].append({
-                "name": name,
-                "price": entry["price"],
-                "url": entry["url"]
-            })
+            category_products[cat].append(
+                {"name": name, "price": entry["price"], "url": entry["url"]}
+            )
     # Sort each category's products by price ascending
     for cat in category_products:
         category_products[cat].sort(key=lambda x: float(x["price"]))
