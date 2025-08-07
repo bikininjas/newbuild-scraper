@@ -12,6 +12,16 @@ from .graph import render_price_history_graph, render_price_history_graph_from_s
 from ..utils import format_french_date_full
 
 
+def price_to_float(x):
+    s = str(x).replace(",", ".").replace("€", "").strip().replace(" ", "")
+    if s in ["", "nan"]:
+        return np.nan
+    try:
+        return float(s)
+    except Exception:
+        return np.nan
+
+
 def render_summary_table(category_best, history):
     html = []
     total_price = 0
@@ -40,14 +50,7 @@ def render_summary_table(category_best, history):
         ]
         # Match normalized price with a tolerance
         matched = history_entries.copy()
-        matched["Price_float"] = matched["Price"].apply(
-            lambda x: (
-                float(x)
-                if str(x).replace(",", ".").replace("€", "").strip().replace(" ", "")
-                not in ["", "nan"]
-                else np.nan
-            )
-        )
+        matched["Price_float"] = matched["Price"].apply(price_to_float)
         matched = matched[np.isclose(matched["Price_float"], price, atol=0.01)]
         best_seen = "?"
         if not matched.empty:

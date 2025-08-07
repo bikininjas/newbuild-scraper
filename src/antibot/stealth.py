@@ -52,7 +52,7 @@ def add_stealth_scripts(page):
         with open(js_path, "r", encoding="utf-8") as js_file:
             stealth_js = js_file.read()
     except FileNotFoundError:
-        raise FileNotFoundError(f"Stealth JavaScript file not found at {js_path}. Please ensure 'stealth.js' exists in the same directory as 'stealth.py'.")
+        raise FileNotFoundError(f"Stealth JavaScript file not found at {js_path}. Please ensure 'stealth.js' exists at this location.")
     page.add_init_script(stealth_js)
 
 

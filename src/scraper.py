@@ -101,6 +101,13 @@ def process_page_content(page):
     return content
 
 
+def should_use_headless_mode(is_linux, url, use_stealth):
+    # Use headless mode on Linux CI/CD runners to avoid X server errors
+    import os
+    is_ci = any(os.environ.get(var) for var in ["CI", "GITHUB_ACTIONS", "GITLAB_CI", "BUILDKITE", "TRAVIS"])
+    return True if (is_linux and is_ci) else not (is_site_supported(url, "pccomponentes.fr") or use_stealth)
+
+
 def get_price_playwright(url, site_selectors):
     """Get price using Playwright (more reliable for protected sites)."""
     is_topachat = is_site_supported(url, "topachat.com")
@@ -110,7 +117,7 @@ def get_price_playwright(url, site_selectors):
         with sync_playwright() as p:
             # Always use headless mode on Linux runners to avoid X server errors
             is_linux = sys.platform.startswith("linux")
-            headless_mode = True if is_linux else not (is_site_supported(url, "pccomponentes.fr") or use_stealth)
+            headless_mode = should_use_headless_mode(is_linux, url, use_stealth)
 
             # Get browser arguments based on stealth requirements
             browser_args = get_stealth_browser_args() if use_stealth else []

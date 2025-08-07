@@ -10,16 +10,22 @@ function toggleHistory(historyId) {
     if (historyDiv.classList.contains("hidden")) {
         historyDiv.classList.remove("hidden");
         icon.style.transform = "rotate(180deg)";
-        const textNode = Array.from(button.childNodes).find(node => 
-            node.nodeType === 3 && node.textContent.includes("Afficher")
-        );
+        const textNode = findTextNode(button, "Afficher");
         if (textNode) textNode.textContent = "Masquer l'historique des prix";
     } else {
         historyDiv.classList.add("hidden");
         icon.style.transform = "rotate(0deg)";
-        const textNode = Array.from(button.childNodes).find(node => 
-            node.nodeType === 3 && node.textContent.includes("Masquer")
-        );
+        const textNode = findTextNode(button, "Masquer");
         if (textNode) textNode.textContent = "Afficher l'historique des prix";
     }
+}
+
+/**
+ * Find the text node within the button that contains the specified keyword
+ * @param {HTMLElement} button - The button element containing the text node
+ * @param {string} keyword - The keyword to search for within the text node
+ * @returns {Text|null} - The found text node or null if not found
+ */
+function findTextNode(button, keyword) {
+    return Array.from(button.childNodes).find(node => node.nodeType === 3 && node.textContent.includes(keyword));
 }
