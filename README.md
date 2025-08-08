@@ -30,6 +30,7 @@ The generated HTML now includes:
 - Product cards grid (all prices, best price, **toggleable** history)
 - Individual price history graphs for each product (Chart.js)
 - **Interactive UI**: Historical price sections are hidden by default with individual toggle buttons for each product
+- ⚠️ Upgrade Kits shown as alternatives and excluded from total calculations
 
 ### UI Features
 
@@ -39,11 +40,34 @@ The generated HTML now includes:
 - **Smooth Animations**: CSS transitions provide smooth show/hide animations
 - **Responsive Design**: Toggle functionality works across all device sizes
 
+### Single-file HTML (inlined JS)
+
+- The generated `output.html` is fully self-contained: all JavaScript needed for UI interactions is inlined.
+- Dropdown selection switches components without reloading the page, persists via `localStorage`, and updates the total instantly.
+- The “Show/Hide history” toggle is implemented inline as well; no external `static/` scripts are required.
+- The previous `static/toggleHistory.js` file has been removed to avoid 404s when serving a single file.
+
 ### How the graphs work
 
 - **Total Price History graph:** Shows the sum of the best price for each product at each timestamp. The last point always matches the sum of the absolute best prices in the table. Missing prices are interpolated by repeating the last known value for visual continuity.
 - **Product Price History graph:** Shows the best price (lowest) for each product at each timestamp. If a product's price is missing at a timestamp, the last known price is repeated for a smoother, visually appealing line.
 - **Price Evolution Indicator:** Each product graph and card now displays an indicator (green ↓ for price drop, red ↑ for price increase, gray – for no change) comparing the last price to the previous one. Indicators use accessible colors and ARIA labels for screen readers.
+
+### Pricing logic
+
+- "Upgrade Kit" category is treated as an alternative bundle. It's displayed in the summary table for comparison but is not included in the total row or in the total price history chart.
+
+## Configuration: excluded categories
+
+To change which categories are excluded from the total, edit:
+
+- `src/htmlgen/constants.py` — update `EXCLUDED_CATEGORIES` (a Python `set` of category names). All pricing totals and the summary table use this list.
+
+Example:
+
+```python
+EXCLUDED_CATEGORIES: set[str] = {"Upgrade Kit", "Another Alt Category"}
+```
 
 ### Known Issues / To Fix
 
@@ -106,9 +130,10 @@ The generated HTML now includes:
 - Push your code to GitHub
 - The workflow in `.github/workflows/main.yml` will run every 4 hours and update `historique_prix.csv` automatically
 
+```yaml
       - name: Format HTML generator scripts
-        run: black src/htmlgen/data.py src/htmlgen/normalize.py src/htmlgen/render.py src/htmlgen/graph.py src/generate_html.py
-
-          git add -A  # Stage all changes (including formatted scripts)
-
+        run: |
+          black src/htmlgen/data.py src/htmlgen/normalize.py src/htmlgen/render.py src/htmlgen/graph.py src/generate_html.py
+          git add -A
           git diff --cached --quiet || git commit -m "Update price history and format scripts"
+```

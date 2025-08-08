@@ -1,13 +1,34 @@
 name: Price Scraper
 
 on:
+  push:
+    branches: 
+      - master
   schedule:
     - cron: '0 */4 * * *'
   workflow_dispatch:
 
 
 jobs:
+  lint_test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Lint (Black)
+        run: black --check .
+      - name: Run unit tests
+        run: pytest -q
   scrape:
+    timeout-minutes: 120
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/alternative_components') }}
+    needs: lint_test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -19,12 +40,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Install Playwright
-        run: pip install playwright
-      - name: Install Playwright dependencies (Ubuntu)
         run: |
+          pip install playwright black
           npx playwright install-deps
-      - name: Install Playwright browsers
-        run: python -m playwright install
+          python -m playwright install
+
       - name: Run scraper
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -39,3 +59,42 @@ jobs:
           git diff --cached --quiet || git commit -m "Update price history and format scripts"
           git pull --rebase
           git push
+
+  push-output-html-gcs:
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    needs: scrape
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Check output.html is non-empty and valid
+        id: check_output
+        run: |
+          if [ ! -s output.html ]; then
+            echo "output.html is empty. Skipping upload."
+            exit 1
+          fi
+          if ! grep -q '<title>' output.html; then
+            echo "output.html missing <title> tag."
+            exit 1
+          fi
+          if ! grep -qi '<body' output.html; then
+            echo "output.html missing <body> tag."
+            exit 1
+          fi
+          if ! grep -q '<ul' output.html; then
+            echo "output.html missing <ul> tag."
+            exit 1
+          fi
+      - name: Set up authentication
+        id: 'auth'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCS_BUCKET_SVC_ACCOUNT_JSON_KEY }}'
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2.1.5
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+      - name: Upload output.html to GCS bucket
+        run: |
+          gsutil cp output.html gs://${{ secrets.GCS_BUCKET_NAME_NEWPC }}/output.html

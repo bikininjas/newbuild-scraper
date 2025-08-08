@@ -3,8 +3,12 @@ import pandas as pd
 from datetime import datetime
 import time
 import logging
-from utils import setup_logging
-from scraper import get_site_selector, get_price_requests, get_price_playwright
+import argparse
+from utils import setup_logging  # From utils package
+from scraper import get_price_requests, get_price_playwright
+from sites.config import get_site_selector
+from alerts import send_discord_alert
+from generate_html import generate_html
 
 # Default domains for which debug logging is enabled
 DEFAULT_DEBUG_DOMAINS = ["topachat.com"]
@@ -15,6 +19,7 @@ LOG_FILE = "scraper.log"
 
 setup_logging(LOG_FILE)
 
+
 def debug_log_domain(url, message, debug_domains=None):
     domains = debug_domains or DEFAULT_DEBUG_DOMAINS
     for domain in domains:
@@ -22,7 +27,10 @@ def debug_log_domain(url, message, debug_domains=None):
             logging.info(f"[{domain.upper()}] {message}")
             break
 
-def append_row(product_prices, updated_rows, name, url, price, now_iso, today, label, args):
+
+def append_row(
+    product_prices, updated_rows, name, url, price, now_iso, today, label, args
+):
     if name not in product_prices:
         product_prices[name] = []
     product_prices[name].append({"url": url, "price": price})
@@ -31,10 +39,13 @@ def append_row(product_prices, updated_rows, name, url, price, now_iso, today, l
         "Date": today,
         "Product_Name": name,
         "URL": url,
-        "Price": price
+        "Price": price,
     }
     updated_rows.append(row_dict)
-    debug_log_domain(url, f"{label} Added row to updated_rows: {row_dict}", args.debug_domains)
+    debug_log_domain(
+        url, f"{label} Added row to updated_rows: {row_dict}", args.debug_domains
+    )
+
 
 def get_idealo_price(url):
     selectors = get_site_selector(url)
@@ -42,9 +53,12 @@ def get_idealo_price(url):
     if price is None:
         price = get_price_playwright(url, selectors)
     if price is None:
-        logging.warning(f"[IDEALO] Selector .productOffers-listItemOfferPrice may be invalid for {url}")
+        logging.warning(
+            f"[IDEALO] Selector .productOffers-listItemOfferPrice may be invalid for {url}"
+        )
     time.sleep(3)
     return price
+
 
 def get_fallback_price(url):
     fallback_sites = ["topachat.com", "amazon.fr", "ldlc.com", "materiel.net"]
@@ -58,21 +72,53 @@ def get_fallback_price(url):
                 return price, site
     return None, None
 
+
 def process_product_row(row, args, product_prices, updated_rows, now_iso, today):
     url = row["URL"]
     name = row["Product_Name"]
     if "idealo.fr" in url:
         price = get_idealo_price(url)
         if price is not None:
-            append_row(product_prices, updated_rows, name, url, price, now_iso, today, "[IDEALO]", args)
+            append_row(
+                product_prices,
+                updated_rows,
+                name,
+                url,
+                price,
+                now_iso,
+                today,
+                "[IDEALO]",
+                args,
+            )
         else:
             price, site = get_fallback_price(url)
             if price is not None:
-                append_row(product_prices, updated_rows, name, url, price, now_iso, today, f"[FALLBACK:{site}]", args)
+                append_row(
+                    product_prices,
+                    updated_rows,
+                    name,
+                    url,
+                    price,
+                    now_iso,
+                    today,
+                    f"[FALLBACK:{site}]",
+                    args,
+                )
     else:
         price, site = get_fallback_price(url)
         if price is not None:
-            append_row(product_prices, updated_rows, name, url, price, now_iso, today, f"[FALLBACK:{site}]", args)
+            append_row(
+                product_prices,
+                updated_rows,
+                name,
+                url,
+                price,
+                now_iso,
+                today,
+                f"[FALLBACK:{site}]",
+                args,
+            )
+
 
 def save_new_rows(df_new, history, debug_domains=None):
     """Save new rows to history and log debug info for specific domains."""
@@ -88,9 +134,11 @@ def save_new_rows(df_new, history, debug_domains=None):
             logging.info(f"[{domain.upper()}] Rows saved to CSV: {domain_rows}")
     return history
 
+
 import argparse
 from alerts import send_discord_alert
 from generate_html import generate_html
+
 
 def main():
     parser = argparse.ArgumentParser(description="Product price scraper")
@@ -101,11 +149,11 @@ def main():
         "--no-html", action="store_true", help="Do not generate output.html"
     )
     parser.add_argument(
-        "--debug-domains", 
-        type=str, 
-        nargs="*", 
+        "--debug-domains",
+        type=str,
+        nargs="*",
         default=DEFAULT_DEBUG_DOMAINS,
-        help="Domains for which to enable debug logging (default: topachat.com)"
+        help="Domains for which to enable debug logging (default: topachat.com)",
     )
     args = parser.parse_args()
 
@@ -130,6 +178,7 @@ def main():
     if updated_rows:
         df_new = pd.DataFrame(updated_rows)
         history = save_new_rows(df_new, history, args.debug_domains)
+
 
 if __name__ == "__main__":
     main()

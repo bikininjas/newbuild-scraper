@@ -22,22 +22,22 @@ def get_price_evolution_indicator(prices, color_scheme="slate"):
     if color_scheme == "slate":
         colors = {
             "no_change": "text-slate-400",
-            "down": "text-green-400", 
-            "up": "text-red-400"
+            "down": "text-green-400",
+            "up": "text-red-400",
         }
     else:  # gray scheme
         colors = {
             "no_change": "text-gray-400",
             "down": "text-green-600",
-            "up": "text-red-600"
+            "up": "text-red-600",
         }
-    
+
     if len(prices) < 2 or prices[-1] is None or prices[-2] is None:
         return (
             f'<span class="{colors["no_change"]}" aria-label="{NO_CHANGE_LABEL}">–</span>',
             NO_CHANGE_LABEL,
         )
-    
+
     last, prev = prices[-1], prices[-2]
     if last < prev:
         return (
@@ -62,7 +62,7 @@ def get_best_price_per_timestamp(product_history, ts_col, product_name):
     timestamps = product_history[ts_col].tolist()
     best_prices = []
     last_price = None
-    
+
     for ts, group in product_history.groupby(ts_col):
         norm_prices = [
             float(normalize_price(p, product_name))
@@ -74,7 +74,7 @@ def get_best_price_per_timestamp(product_history, ts_col, product_name):
             min_price = min(valid_prices)
             last_price = min_price
         best_prices.append(last_price)
-    
+
     return timestamps, best_prices
 
 
@@ -99,7 +99,7 @@ def render_price_history_graph_from_series(timestamps, prices, product_name):
             }
         ],
     }
-    
+
     chart_config = {
         "type": "line",
         "data": data,
@@ -134,16 +134,16 @@ def render_price_history_graph_from_series(timestamps, prices, product_name):
             },
         },
     }
-    
+
     chart_json = json.dumps(chart_config)
     canvas_id = f"chart-{abs(hash(product_name))}"
-    
+
     html = f'<div class="flex items-center gap-2 mb-2"><span class="font-semibold text-slate-300">{product_name}</span>{indicator_html}</div>'
     html += '<div class="chart-bg p-4 rounded-xl">'
     html += f'<canvas id="{canvas_id}" class="w-full h-32" aria-label="Price history graph for {product_name}" role="img"></canvas>'
     html += DIV_CLOSE_TAG
     html += f'<script>new Chart(document.getElementById("{canvas_id}"), {chart_json});</script>'
-    
+
     return html
 
 
@@ -154,16 +154,16 @@ def render_price_history_graph(history, product_name):
     timestamps, best_prices = get_best_price_per_timestamp(
         product_history, ts_col, product_name
     )
-    
+
     # Interpolate missing prices by repeating last known value
     prices = [
         p if p is not None else (prices[i - 1] if i > 0 else None)
         for i, p in enumerate(best_prices)
     ]
-    
+
     # Evolution indicator
     indicator_html, _ = get_price_evolution_indicator(prices, "gray")
-    
+
     data = {
         "labels": timestamps,
         "datasets": [
@@ -177,7 +177,7 @@ def render_price_history_graph(history, product_name):
             }
         ],
     }
-    
+
     chart_config = {
         "type": "line",
         "data": data,
@@ -190,14 +190,14 @@ def render_price_history_graph(history, product_name):
             "scales": {"y": {"beginAtZero": True}},
         },
     }
-    
+
     chart_json = json.dumps(chart_config)
     canvas_id = f"chart-{abs(hash(product_name))}"
-    
+
     html = f'<div class="flex items-center gap-2 mb-2"><span class="font-semibold">{product_name}</span>{indicator_html}</div>'
     html += f'<canvas id="{canvas_id}" class="w-full h-32" aria-label="Price history graph for {product_name}" role="img"></canvas>'
     html += f'<script>new Chart(document.getElementById("{canvas_id}"), {chart_json});</script>'
-    
+
     return html
 
 
@@ -208,7 +208,7 @@ def render_all_price_graphs(product_prices, history):
     html.append(
         '<h2 class="text-2xl font-bold text-center text-cyan-700 mb-6">Best Price History Graphs</h2>'
     )
-    
+
     for name, entries in product_prices.items():
         product_history = history[history["Product_Name"] == name]
         product_history = product_history.sort_values(
@@ -220,14 +220,14 @@ def render_all_price_graphs(product_prices, history):
         timestamps, best_prices = get_best_price_per_timestamp(
             product_history, ts_col, name
         )
-        
+
         prices = [
             p if p is not None else (prices[i - 1] if i > 0 else None)
             for i, p in enumerate(best_prices)
         ]
-        
+
         indicator_html, _ = get_price_evolution_indicator(prices, "gray")
-        
+
         data = {
             "labels": timestamps,
             "datasets": [
@@ -241,7 +241,7 @@ def render_all_price_graphs(product_prices, history):
                 }
             ],
         }
-        
+
         chart_config = {
             "type": "line",
             "data": data,
@@ -254,16 +254,16 @@ def render_all_price_graphs(product_prices, history):
                 "scales": {"y": {"beginAtZero": True}},
             },
         }
-        
+
         chart_json = json.dumps(chart_config)
         canvas_id = f"chart-{abs(hash(name))}"
-        
+
         html.append(
             f'<div class="mb-10"><div class="flex items-center gap-2 mb-2"><h3 class="text-xl font-bold">{name}</h3>{indicator_html}</div><canvas id="{canvas_id}" class="w-full h-32" aria-label="Price history graph for {name}" role="img"></canvas>'
         )
         html.append(
             f'<script>new Chart(document.getElementById("{canvas_id}"), {chart_json});</script></div>'
         )
-    
+
     html.append(DIV_CLOSE_TAG)
     return "\n".join(html)

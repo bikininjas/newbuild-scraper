@@ -7,6 +7,9 @@ import os
 import json
 
 
+PRODUCTS_CSV = "produits.csv"
+
+
 def normalize_and_filter_prices(entries, name):
     valid_entries = []
     for entry in entries:
@@ -22,12 +25,24 @@ def normalize_and_filter_prices(entries, name):
 
 def get_category_best(product_prices):
     category_best = {}
+    # Load products data to get explicit categories
+    products_data = load_products(PRODUCTS_CSV)
+
     for name, entries in product_prices.items():
         valid_entries = normalize_and_filter_prices(entries, name)
         if not valid_entries:
             continue
         best = min(valid_entries, key=lambda x: float(x["price"]))
-        cat = get_category(name, best["url"])
+
+        # Get explicit category from CSV, fallback to heuristic
+        product_data = products_data.get(name, {})
+        cat = product_data.get("category", get_category(name, best["url"]))
+
+        # Exclude "Upgrade Kit" from total price calculations
+        if cat == "Upgrade Kit":
+            product_prices[name] = valid_entries
+            continue
+
         if cat not in category_best or float(best["price"]) < float(
             category_best[cat]["price"]
         ):
@@ -162,7 +177,7 @@ def _get_product_graph_datasets(product_min_prices, total_history):
 
 
 def _render_html(
-    category_best, history, product_prices, product_min_prices, total_history
+    category_products, history, product_prices, product_min_prices, total_history
 ):
     formatted_labels = _get_formatted_labels(total_history)
     product_graph_datasets = _get_product_graph_datasets(
@@ -239,6 +254,9 @@ def _render_html(
         "    tbody tr { background: rgba(15, 23, 42, 0.8) !important; }",
         "    tbody tr:hover { background: rgba(30, 41, 59, 0.8) !important; }",
         "    th, td { border-color: rgba(51, 65, 85, 0.4) !important; }",
+        "    select { background: rgba(15, 23, 42, 0.95) !important; color: #e2e8f0 !important; border: 1px solid rgba(51, 65, 85, 0.4) !important; border-radius: 8px; padding: 8px 12px; font-size: 14px; }",
+        "    select:focus { outline: none; border-color: rgba(56, 189, 248, 0.5) !important; box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1); }",
+        "    select option { background: rgba(15, 23, 42, 0.95) !important; color: #e2e8f0 !important; }",
         "  </style>",
         "</head>",
         '<body class="bg-slate-900 font-inter min-h-screen">',
@@ -252,12 +270,39 @@ def _render_html(
         f"new Chart(ctx, {chart_json});\n"
         f"</script></div>",
     ]
-    html.append(render_summary_table(category_best, history))
+    html.append(render_summary_table(category_products, history))
     # Call render_product_cards - historical prices are now toggleable with buttons
     html.append(render_product_cards(product_prices, history, product_min_prices))
 
-    # Add JavaScript for toggle functionality
-    html.append('<script src="static/toggleHistory.js"></script>')
+    # Inline JavaScript for toggle functionality to keep a single self-contained HTML
+    html.append(
+        """
+<script>
+// Toggle visibility of price history sections (inlined)
+function toggleHistory(historyId) {
+    const historyDiv = document.getElementById(historyId);
+    const icon = document.getElementById("icon-" + historyId);
+    const button = icon ? icon.parentElement : null;
+    if (!historyDiv) return;
+    if (historyDiv.classList.contains("hidden")) {
+        historyDiv.classList.remove("hidden");
+        if (icon) icon.style.transform = "rotate(180deg)";
+        if (button) {
+            const textNode = Array.from(button.childNodes).find(n => n.nodeType === 3 && n.textContent.includes("Afficher"));
+            if (textNode) textNode.textContent = "Masquer l'historique des prix";
+        }
+    } else {
+        historyDiv.classList.add("hidden");
+        if (icon) icon.style.transform = "rotate(0deg)";
+        if (button) {
+            const textNode = Array.from(button.childNodes).find(n => n.nodeType === 3 && n.textContent.includes("Masquer"));
+            if (textNode) textNode.textContent = "Afficher l'historique des prix";
+        }
+    }
+}
+</script>
+"""
+    )
 
     html.append("</body></html>")
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -302,7 +347,8 @@ def build_product_prices(products, history):
     """Build product prices dictionary from products and history data."""
     product_prices = {}
 
-    for name, urls in products.items():
+    for name, product_data in products.items():
+        urls = product_data["urls"]
         entries = []
         for url in urls:
             price_entry = _get_latest_price_for_url(history, name, url)
@@ -315,8 +361,54 @@ def build_product_prices(products, history):
     return product_prices
 
 
+def _build_category_products_with_explicit_categories(product_prices):
+    """Build category_products with explicit categories from CSV, removing duplicates."""
+    from collections import defaultdict
+
+    category_products = defaultdict(list)
+    # Load products data again to get explicit categories
+    products_data = load_products(PRODUCTS_CSV)
+
+    for name, entries in product_prices.items():
+        # Get the explicit category from CSV
+        product_data = products_data.get(name, {})
+        cat = product_data.get("category", "Other")
+
+        for entry in entries:
+            category_products[cat].append(
+                {"name": name, "price": entry["price"], "url": entry["url"]}
+            )
+
+    # Sort each category's products by price ascending (cheapest first)
+    for cat in category_products:
+        category_products[cat].sort(key=lambda x: float(x["price"]))
+
+    return category_products
+
+
+def _remove_duplicates_within_categories(category_products):
+    """Remove duplicate products within each category, keeping the cheapest."""
+    for cat in category_products:
+        # Group by product name and keep the cheapest
+        product_groups = {}
+        for product in category_products[cat]:
+            name = product["name"]
+            if name not in product_groups or float(product["price"]) < float(
+                product_groups[name]["price"]
+            ):
+                product_groups[name] = product
+
+        # Convert back to list, sorted by price
+        category_products[cat] = sorted(
+            product_groups.values(), key=lambda x: float(x["price"])
+        )
+
+    return category_products
+
+
 def generate_html(product_prices, history):
     # Ensure all helpers are defined before use
+    # Get best product per category and normalized product_prices
     category_best, product_prices = get_category_best(product_prices)
     timestamps = extract_timestamps(history)
     product_min_prices = get_product_min_price_series(
@@ -329,14 +421,21 @@ def generate_html(product_prices, history):
         },
         timestamps,
     )
+
+    # Build category_products: category → list of product dicts (sorted by price)
+    category_products = _build_category_products_with_explicit_categories(
+        product_prices
+    )
+    category_products = _remove_duplicates_within_categories(category_products)
+
     _render_html(
-        category_best, history, product_prices, product_min_prices, total_history
+        category_products, history, product_prices, product_min_prices, total_history
     )
 
 
 def main():
     """Main function to orchestrate HTML generation from scraped data."""
-    products = load_products("produits.csv")
+    products = load_products(PRODUCTS_CSV)
     history = load_history("historique_prix.csv")
     product_prices = build_product_prices(products, history)
     generate_html(product_prices, history)
