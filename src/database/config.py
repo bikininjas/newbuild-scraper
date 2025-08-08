@@ -46,8 +46,7 @@ class DatabaseConfig:
             csv_history_path=os.getenv("DB_CSV_HISTORY", "historique_prix.csv"),
             cache_duration_hours=int(os.getenv("DB_CACHE_HOURS", "6")),
             failed_cache_duration_hours=int(os.getenv("DB_FAILED_CACHE_HOURS", "24")),
-            enable_auto_migration=os.getenv("DB_AUTO_MIGRATE", "true").lower()
-            == "true",
+            enable_auto_migration=os.getenv("DB_AUTO_MIGRATE", "true").lower() == "true",
         )
 
     @classmethod
@@ -68,9 +67,6 @@ class DatabaseConfig:
             csv_products_path=config.get("csv_products_path", "produits.csv"),
             csv_history_path=config.get("csv_history_path", "historique_prix.csv"),
             cache_duration_hours=int(config.get("cache_duration_hours", "6")),
-            failed_cache_duration_hours=int(
-                config.get("failed_cache_duration_hours", "24")
-            ),
-            enable_auto_migration=config.get("enable_auto_migration", "true").lower()
-            == "true",
+            failed_cache_duration_hours=int(config.get("failed_cache_duration_hours", "24")),
+            enable_auto_migration=config.get("enable_auto_migration", "true").lower() == "true",
         )

@@ -49,9 +49,7 @@ def get_price_requests(url, site_selectors, db_manager=None):
             if db_manager and resp.status_code in [404, 403, 500, 503]:
                 product = db_manager.get_product_by_url(url)
                 if product:
-                    error_type = (
-                        "404_error" if resp.status_code == 404 else "scrape_error"
-                    )
+                    error_type = "404_error" if resp.status_code == 404 else "scrape_error"
                     db_manager.log_product_issue(
                         product_id=product.id,
                         url=url,
@@ -63,9 +61,7 @@ def get_price_requests(url, site_selectors, db_manager=None):
                     # Automatically handle critical issues
                     if resp.status_code == 404:
                         db_manager.remove_product_completely(product.id, "404 error")
-                        logging.warning(
-                            f"Removed product due to 404 error: {product.name}"
-                        )
+                        logging.warning(f"Removed product due to 404 error: {product.name}")
 
             return None
         soup = BeautifulSoup(resp.text, "html.parser")
@@ -75,9 +71,7 @@ def get_price_requests(url, site_selectors, db_manager=None):
         if price_info and price_info.get("price"):
             return price_info
 
-        logging.warning(
-            f"No price found for {url} with selectors {site_selectors} (requests)"
-        )
+        logging.warning(f"No price found for {url} with selectors {site_selectors} (requests)")
     except Exception as e:
         logging.error(f"Requests error for {url}: {e}")
 
@@ -86,10 +80,7 @@ def get_price_requests(url, site_selectors, db_manager=None):
             product = db_manager.get_product_by_url(url)
             if product:
                 db_manager.log_product_issue(
-                    product_id=product.id,
-                    url=url,
-                    issue_type="scrape_error",
-                    error_message=str(e),
+                    product_id=product.id, url=url, issue_type="scrape_error", error_message=str(e)
                 )
     return None
 
@@ -136,8 +127,7 @@ def should_use_headless_mode(is_linux, url, use_stealth):
     import os
 
     is_ci = any(
-        os.environ.get(var)
-        for var in ["CI", "GITHUB_ACTIONS", "GITLAB_CI", "BUILDKITE", "TRAVIS"]
+        os.environ.get(var) for var in ["CI", "GITHUB_ACTIONS", "GITLAB_CI", "BUILDKITE", "TRAVIS"]
     )
     return (
         True
@@ -187,9 +177,7 @@ def get_price_playwright(url, site_selectors, db_manager=None):
 
             # Parse content and extract price using site-specific logic
             soup = BeautifulSoup(content, "html.parser")
-            price_info = extract_price_for_site(
-                soup, url, site_selectors, "Playwright", page
-            )
+            price_info = extract_price_for_site(soup, url, site_selectors, "Playwright", page)
 
             browser.close()
 

@@ -7,11 +7,4 @@ from .manager import DatabaseManager
 from .models import Product, PriceHistory, URLEntry, CacheEntry
 from .config import DatabaseConfig
 
-__all__ = [
-    "DatabaseManager",
-    "Product",
-    "PriceHistory",
-    "URLEntry",
-    "CacheEntry",
-    "DatabaseConfig",
-]
+__all__ = ["DatabaseManager", "Product", "PriceHistory", "URLEntry", "CacheEntry", "DatabaseConfig"]

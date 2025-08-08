@@ -47,9 +47,7 @@ def log_amazon_page_info(soup: BeautifulSoup, method: str = ""):
 def log_amazon_price_found(selector: str, price: str, method: str = ""):
     """Log when Amazon price is found."""
     method_prefix = f" {method}" if method else ""
-    logger.info(
-        f"Found Amazon price with{method_prefix} selector '{selector}': '{price}'"
-    )
+    logger.info(f"Found Amazon price with{method_prefix} selector '{selector}': '{price}'")
 
 
 def log_amazon_price_elements(soup: BeautifulSoup, method: str = ""):
@@ -61,9 +59,7 @@ def log_amazon_price_elements(soup: BeautifulSoup, method: str = ""):
     )
 
 
-def extract_amazon_price(
-    soup: BeautifulSoup, site_selectors: list, method: str = ""
-) -> str:
+def extract_amazon_price(soup: BeautifulSoup, site_selectors: list, method: str = "") -> str:
     """
     Extract price from Amazon page with Amazon-specific debugging.
 

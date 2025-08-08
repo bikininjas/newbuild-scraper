@@ -57,9 +57,7 @@ def extract_product_info_from_url(url: str) -> dict:
     # Extract model keywords (remove common words)
     common_words = {"pro", "gaming", "rgb", "wireless", "black", "white", "red", "blue"}
     model_parts = [
-        part
-        for part in parts
-        if part.lower() not in common_words and part != detected_brand
+        part for part in parts if part.lower() not in common_words and part != detected_brand
     ]
 
     return {
@@ -241,9 +239,7 @@ def check_product_mismatch(page: Page, original_url: str, db_manager=None) -> bo
 
             # Log critical error and recommendation
             logger.error(f"[IDEALO] CRITICAL: URL {original_url} serves wrong product!")
-            logger.error(
-                "[IDEALO] This URL should be removed or corrected in produits.csv"
-            )
+            logger.error("[IDEALO] This URL should be removed or corrected in produits.csv")
 
             return True
 
@@ -335,18 +331,14 @@ def extract_price_from_meta_description(page: Page) -> str:
             content = meta_desc.get_attribute("content")
             if content:
                 # Look for price pattern: "à partir de X,XX€" or "X,XX€"
-                price_pattern = (
-                    r"à partir de ([\d,]+)(?:&nbsp;)?€|(\d+,\d+)(?:&nbsp;)?€"
-                )
+                price_pattern = r"à partir de ([\d,]+)(?:&nbsp;)?€|(\d+,\d+)(?:&nbsp;)?€"
                 match = re.search(price_pattern, content)
                 if match:
                     price = match.group(1) or match.group(2)
                     if price:
                         # Convert comma to dot for standardization
                         price = price.replace(",", ".")
-                        logger.info(
-                            f"[IDEALO] Found price in meta description: {price}€"
-                        )
+                        logger.info(f"[IDEALO] Found price in meta description: {price}€")
                         return f"{price}€"
 
         logger.debug("[IDEALO] No price found in meta description")
@@ -382,9 +374,7 @@ def extract_vendor_offers(page: Page, soup: BeautifulSoup) -> List[Dict]:
                     f"[IDEALO] Found {len(offer_elements)} offers using selector: {selector}"
                 )
 
-                for i, offer_elem in enumerate(
-                    offer_elements[:5]
-                ):  # Limit to top 5 offers
+                for i, offer_elem in enumerate(offer_elements[:5]):  # Limit to top 5 offers
                     try:
                         # Extract vendor name - Updated selectors based on screenshots
                         vendor_name = None
@@ -392,9 +382,7 @@ def extract_vendor_offers(page: Page, soup: BeautifulSoup) -> List[Dict]:
                         # Strategy 1: Look for data-shop-name attribute (most reliable)
                         shop_elem = offer_elem.select_one("[data-shop-name]")
                         if shop_elem:
-                            raw_vendor_name = shop_elem.get(
-                                "data-shop-name", ""
-                            ).strip()
+                            raw_vendor_name = shop_elem.get("data-shop-name", "").strip()
                             if raw_vendor_name:
                                 # Clean up the vendor name - remove product categories and location info
                                 vendor_name = raw_vendor_name
@@ -427,22 +415,15 @@ def extract_vendor_offers(page: Page, soup: BeautifulSoup) -> List[Dict]:
                                             break
 
                                     # If no obvious vendor found, take the second part (after category)
-                                    if (
-                                        vendor_name == raw_vendor_name
-                                        and len(parts) >= 2
-                                    ):
+                                    if vendor_name == raw_vendor_name and len(parts) >= 2:
                                         vendor_name = parts[1]
 
                                 # Remove location info (e.g., " - Marchand de Paris")
                                 if " - Marchand de " in vendor_name:
-                                    vendor_name = vendor_name.split(" - Marchand de ")[
-                                        0
-                                    ]
+                                    vendor_name = vendor_name.split(" - Marchand de ")[0]
 
                                 # Clean up marketplace indicators
-                                vendor_name = vendor_name.replace(
-                                    " (Marketplace)", ""
-                                ).strip()
+                                vendor_name = vendor_name.replace(" (Marketplace)", "").strip()
 
                                 logger.debug(
                                     f"[IDEALO] Found vendor via data-shop-name: {vendor_name} (cleaned from: {raw_vendor_name})"
@@ -477,9 +458,7 @@ def extract_vendor_offers(page: Page, soup: BeautifulSoup) -> List[Dict]:
                                 logo_img = offer_elem.select_one(logo_sel)
                                 if logo_img:
                                     alt_text = logo_img.get("alt", "").strip()
-                                    if alt_text and not alt_text.lower().endswith(
-                                        "logo"
-                                    ):
+                                    if alt_text and not alt_text.lower().endswith("logo"):
                                         vendor_name = (
                                             alt_text.replace(" logo", "")
                                             .replace("-logo", "")
@@ -525,9 +504,7 @@ def extract_vendor_offers(page: Page, soup: BeautifulSoup) -> List[Dict]:
                             price_elem = offer_elem.select_one(price_sel)
                             if price_elem:
                                 price_text = price_elem.get_text(strip=True)
-                                price_match = re.search(
-                                    r"(\d+(?:,\d+)?)\s*€", price_text
-                                )
+                                price_match = re.search(r"(\d+(?:,\d+)?)\s*€", price_text)
                                 if price_match:
                                     price = price_match.group(1).replace(",", ".")
                                     logger.debug(f"[IDEALO] Found price: {price}€")
@@ -573,13 +550,9 @@ def extract_vendor_offers(page: Page, soup: BeautifulSoup) -> List[Dict]:
                                 "position": i + 1,
                             }
                             offers.append(offer)
-                            logger.info(
-                                f"[IDEALO] Extracted offer: {vendor_name} - {price}€"
-                            )
+                            logger.info(f"[IDEALO] Extracted offer: {vendor_name} - {price}€")
                         elif vendor_name:
-                            logger.debug(
-                                f"[IDEALO] Found vendor {vendor_name} but no price"
-                            )
+                            logger.debug(f"[IDEALO] Found vendor {vendor_name} but no price")
                         elif price:
                             logger.debug(f"[IDEALO] Found price {price}€ but no vendor")
 
@@ -598,9 +571,7 @@ def extract_vendor_offers(page: Page, soup: BeautifulSoup) -> List[Dict]:
         return []
 
 
-def follow_vendor_redirect(
-    page: Page, redirect_url: str, base_url: str
-) -> Optional[str]:
+def follow_vendor_redirect(page: Page, redirect_url: str, base_url: str) -> Optional[str]:
     """
     Follow Idealo redirect to get the actual vendor URL.
 
@@ -706,16 +677,12 @@ def extract_best_vendor_info(page: Page, soup: BeautifulSoup) -> Dict:
 
         # Get the best offer (first one, usually lowest price)
         best_offer = offers[0]
-        logger.info(
-            f"[IDEALO] Best offer: {best_offer['vendor']} - {best_offer['price']}"
-        )
+        logger.info(f"[IDEALO] Best offer: {best_offer['vendor']} - {best_offer['price']}")
 
         # Try to get the actual vendor URL
         vendor_url = None
         if best_offer.get("redirect_url"):
-            vendor_url = follow_vendor_redirect(
-                page, best_offer["redirect_url"], page.url
-            )
+            vendor_url = follow_vendor_redirect(page, best_offer["redirect_url"], page.url)
 
         return {
             "vendor_name": best_offer["vendor"],
@@ -729,9 +696,7 @@ def extract_best_vendor_info(page: Page, soup: BeautifulSoup) -> Dict:
         return {}
 
 
-def extract_idealo_price_with_vendor(
-    page: Page, soup: BeautifulSoup, site_selectors: list
-) -> dict:
+def extract_idealo_price_with_vendor(page: Page, soup: BeautifulSoup, site_selectors: list) -> dict:
     """
     Extract price from Idealo with vendor information (wrapper for new format).
 
@@ -847,9 +812,7 @@ def extract_idealo_price(page: Page, soup: BeautifulSoup, site_selectors: list) 
                 vendor_soup = BeautifulSoup(vendor_content, "html.parser")
 
                 # Try to extract price from vendor's page using generic selectors
-                vendor_price = extract_vendor_page_price(
-                    vendor_soup, vendor_info["vendor_url"]
-                )
+                vendor_price = extract_vendor_page_price(vendor_soup, vendor_info["vendor_url"])
 
                 if vendor_price:
                     logger.info(
@@ -889,9 +852,7 @@ def extract_idealo_price(page: Page, soup: BeautifulSoup, site_selectors: list) 
                         price_match = re.search(r"(\d+(?:,\d+)?)\s*€", text)
                         if price_match:
                             price = price_match.group(1).replace(",", ".")
-                            logger.info(
-                                f"[IDEALO] Found price via selector {selector}: {price}€"
-                            )
+                            logger.info(f"[IDEALO] Found price via selector {selector}: {price}€")
                             return f"{price}€"
         except Exception as e:
             logger.debug(f"[IDEALO] Selector {selector} failed: {e}")
@@ -933,9 +894,7 @@ def extract_vendor_page_price(soup: BeautifulSoup, vendor_url: str) -> tuple[str
                     text = price_elem.get_text(strip=True)
                     if text:
                         # Clean and extract price
-                        price_match = re.search(
-                            r"(\d+(?:[.,]\d+)?)", text.replace(",", ".")
-                        )
+                        price_match = re.search(r"(\d+(?:[.,]\d+)?)", text.replace(",", "."))
                         if price_match:
                             price = price_match.group(1)
                             logger.info(f"[IDEALO] Vendor price found: {price}€")
@@ -979,8 +938,7 @@ def extract_amazon_price_and_info(soup: BeautifulSoup) -> tuple[str, bool, bool]
             if price_elem:
                 price_text = price_elem.get_text(strip=True)
                 price_match = re.search(
-                    r"(\d+(?:[,\.]\d+)?)",
-                    price_text.replace(" ", "").replace("\xa0", ""),
+                    r"(\d+(?:[,\.]\d+)?)", price_text.replace(" ", "").replace("\xa0", "")
                 )
                 if price_match:
                     price = price_match.group(1).replace(",", ".")
@@ -1035,21 +993,19 @@ def extract_amazon_price_and_info(soup: BeautifulSoup) -> tuple[str, bool, bool]
         if not prime_eligible:
             page_text = soup.get_text().lower()
             if "prime" in page_text and (
-                "livraison" in page_text
-                or "gratuite" in page_text
-                or "free" in page_text
+                "livraison" in page_text or "gratuite" in page_text or "free" in page_text
             ):
                 prime_eligible = True
                 logger.info("[IDEALO] Amazon Prime eligible (text detection)")
 
-        logger.info(f"[IDEALO] Amazon final result: {price}€, marketplace={is_marketplace}, prime={prime_eligible}")
+        logger.info(
+            f"[IDEALO] Amazon final result: {price}€, marketplace={is_marketplace}, prime={prime_eligible}"
+        )
         return f"{price}€", is_marketplace, prime_eligible
 
     except Exception as e:
         logger.error(f"[IDEALO] Error extracting Amazon price: {e}")
         return "", False, False
-
-
 
 
 def handle_idealo_page(page: Page, url: str, db_manager=None) -> bool:
@@ -1069,9 +1025,7 @@ def handle_idealo_page(page: Page, url: str, db_manager=None) -> bool:
         mismatch_detected = check_product_mismatch(page, url, db_manager)
 
         if mismatch_detected:
-            logger.error(
-                f"[IDEALO] Skipping price extraction due to product mismatch: {url}"
-            )
+            logger.error(f"[IDEALO] Skipping price extraction due to product mismatch: {url}")
             return False
 
         return True

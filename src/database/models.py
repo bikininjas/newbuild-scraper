@@ -98,9 +98,7 @@ class CacheEntry:
         return {
             "id": self.id,
             "url": self.url,
-            "last_scraped": (
-                self.last_scraped.isoformat() if self.last_scraped else None
-            ),
+            "last_scraped": (self.last_scraped.isoformat() if self.last_scraped else None),
             "cache_duration_hours": self.cache_duration_hours,
             "status": self.status,
             "attempts": self.attempts,

@@ -37,9 +37,7 @@ def debug_log_domain(url, message, debug_domains=None):
             break
 
 
-def append_row(
-    product_prices, updated_rows, name, url, price_info, now_iso, today, label, args
-):
+def append_row(product_prices, updated_rows, name, url, price_info, now_iso, today, label, args):
     # Extract price from price_info (could be string or dict)
     if isinstance(price_info, dict):
         price = price_info.get("price", "")
@@ -70,9 +68,7 @@ def append_row(
             row_dict["Is_Prime_Eligible"] = price_info["is_prime_eligible"]
 
     updated_rows.append(row_dict)
-    debug_log_domain(
-        url, f"{label} Added row to updated_rows: {row_dict}", args.debug_domains
-    )
+    debug_log_domain(url, f"{label} Added row to updated_rows: {row_dict}", args.debug_domains)
 
 
 def get_idealo_price(url, db_manager=None):
@@ -101,9 +97,7 @@ def get_fallback_price(url, db_manager=None):
     return None, None
 
 
-def process_product_row_db(
-    row, args, product_prices, updated_rows, now_iso, today, db_manager
-):
+def process_product_row_db(row, args, product_prices, updated_rows, now_iso, today, db_manager):
     """Process a product row with database manager integration."""
     url = row["URL"]
     name = row["Product_Name"]
@@ -290,9 +284,7 @@ def get_products_to_scrape(args, db_manager, db_config):
             for product in all_products:
                 urls = db_manager.get_product_urls(product.name)
                 for url_entry in urls:
-                    products_data.append(
-                        {"Product_Name": product.name, "URL": url_entry.url}
-                    )
+                    products_data.append({"Product_Name": product.name, "URL": url_entry.url})
             return pd.DataFrame(products_data)
 
 
@@ -309,9 +301,7 @@ def scrape_products(products, args, db_manager, db_config):
             logging.info(f"Skipping cached URL: {row['URL']}")
             continue
 
-        process_product_row_db(
-            row, args, product_prices, updated_rows, now_iso, today, db_manager
-        )
+        process_product_row_db(row, args, product_prices, updated_rows, now_iso, today, db_manager)
 
     return product_prices, updated_rows
 
@@ -344,9 +334,7 @@ def save_scraping_results(updated_rows, db_manager, db_config):
 
 def main():
     parser = argparse.ArgumentParser(description="Product price scraper")
-    parser.add_argument(
-        "--no-html", action="store_true", help="Do not generate output.html"
-    )
+    parser.add_argument("--no-html", action="store_true", help="Do not generate output.html")
     parser.add_argument(
         "--debug-domains",
         type=str,
@@ -366,10 +354,7 @@ def main():
         help="Maximum age in hours for --new-products-only (default: 48)",
     )
     parser.add_argument(
-        "--config",
-        type=str,
-        default="database.conf",
-        help="Path to database configuration file",
+        "--config", type=str, default="database.conf", help="Path to database configuration file"
     )
     args = parser.parse_args()
 
@@ -389,9 +374,7 @@ def main():
     history = db_manager.get_price_history()
 
     # Scrape products
-    product_prices, updated_rows = scrape_products(
-        products, args, db_manager, db_config
-    )
+    product_prices, updated_rows = scrape_products(products, args, db_manager, db_config)
 
     # Generate HTML report
     if not args.no_html:

@@ -18,9 +18,7 @@ from database.manager import DatabaseManager
 from database.config import DatabaseConfig
 
 # Set up logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -77,8 +75,7 @@ class ProductLoader:
 
                             # Get product ID
                             product_result = conn.execute(
-                                "SELECT id FROM products WHERE name = ?",
-                                (product_name,),
+                                "SELECT id FROM products WHERE name = ?", (product_name,)
                             ).fetchone()
 
                             if product_result:
@@ -96,15 +93,11 @@ class ProductLoader:
                                 logger.info(f"✓ Loaded: {product_name} - {url}")
                             else:
                                 failed_urls.append(url)
-                                logger.warning(
-                                    f"✗ Failed to get product ID: {product_name}"
-                                )
+                                logger.warning(f"✗ Failed to get product ID: {product_name}")
 
                         except Exception as e:
                             failed_urls.append(url)
-                            logger.warning(
-                                f"✗ Failed to add product: {product_name} - {e}"
-                            )
+                            logger.warning(f"✗ Failed to add product: {product_name} - {e}")
                 else:
                     failed_urls.append(url)
                     logger.warning(f"✗ Invalid/inaccessible URL: {url}")

@@ -72,14 +72,8 @@ def get_category_best(product_prices):
             product_prices[name] = valid_entries
             continue
 
-        if cat not in category_best or float(best["price"]) < float(
-            category_best[cat]["price"]
-        ):
-            category_best[cat] = {
-                "name": name,
-                "price": best["price"],
-                "url": best["url"],
-            }
+        if cat not in category_best or float(best["price"]) < float(category_best[cat]["price"]):
+            category_best[cat] = {"name": name, "price": best["price"], "url": best["url"]}
         product_prices[name] = valid_entries
     return category_best, product_prices
 
@@ -89,9 +83,7 @@ def extract_timestamps(history):
         ts_col = history["Timestamp_ISO"]
     else:
         ts_col = history["Date"]
-    return sorted(
-        {str(ts) for ts in ts_col if isinstance(ts, str) and ts.strip() and ts != "nan"}
-    )
+    return sorted({str(ts) for ts in ts_col if isinstance(ts, str) and ts.strip() and ts != "nan"})
 
 
 def get_product_min_price_series(category_best, history, timestamps):
@@ -99,9 +91,7 @@ def get_product_min_price_series(category_best, history, timestamps):
     for cat, info in category_best.items():
         name = info["name"]
         product_history = history[history["Product_Name"] == name]
-        ts_col_name = (
-            "Timestamp_ISO" if "Timestamp_ISO" in product_history.columns else "Date"
-        )
+        ts_col_name = "Timestamp_ISO" if "Timestamp_ISO" in product_history.columns else "Date"
         product_history = product_history.sort_values(by=ts_col_name)
         prices = []
         ts_labels = []
@@ -132,11 +122,7 @@ def get_total_price_history(product_min_prices, timestamps):
             if i == len(timestamps) - 1:
                 total += absolute_best.get(name, 0)
             else:
-                total += (
-                    ts_price_dict.get(ts, 0)
-                    if ts_price_dict.get(ts, 0) is not None
-                    else 0
-                )
+                total += ts_price_dict.get(ts, 0) if ts_price_dict.get(ts, 0) is not None else 0
         total_history.append({"timestamp": ts, "total": round(total, 2)})
     return total_history, absolute_best
 
@@ -205,23 +191,16 @@ def _get_product_graph_datasets(product_min_prices, total_history):
     return datasets
 
 
-def _render_html(
-    category_products, history, product_prices, product_min_prices, total_history
-):
+def _render_html(category_products, history, product_prices, product_min_prices, total_history):
     formatted_labels = _get_formatted_labels(total_history)
-    product_graph_datasets = _get_product_graph_datasets(
-        product_min_prices, total_history
-    )
+    product_graph_datasets = _get_product_graph_datasets(product_min_prices, total_history)
     chart_config = {
         "type": "line",
         "data": {"labels": formatted_labels, "datasets": product_graph_datasets},
         "options": {
             "responsive": True,
             "plugins": {
-                "legend": {
-                    "display": True,
-                    "labels": {"color": "#e2e8f0", "font": {"size": 12}},
-                },
+                "legend": {"display": True, "labels": {"color": "#e2e8f0", "font": {"size": 12}}},
                 "title": {
                     "display": True,
                     "text": "Historique du prix total",
@@ -428,9 +407,7 @@ def _remove_duplicates_within_categories(category_products):
                 product_groups[name] = product
 
         # Convert back to list, sorted by price
-        category_products[cat] = sorted(
-            product_groups.values(), key=lambda x: float(x["price"])
-        )
+        category_products[cat] = sorted(product_groups.values(), key=lambda x: float(x["price"]))
 
     return category_products
 
@@ -440,9 +417,7 @@ def generate_html(product_prices, history):
     # Get best product per category and normalized product_prices
     category_best, product_prices = get_category_best(product_prices)
     timestamps = extract_timestamps(history)
-    product_min_prices = get_product_min_price_series(
-        category_best, history, timestamps
-    )
+    product_min_prices = get_product_min_price_series(category_best, history, timestamps)
     total_history, _ = get_total_price_history(
         {
             name: dict(zip(data["timestamps"], data["prices"]))
@@ -452,14 +427,10 @@ def generate_html(product_prices, history):
     )
 
     # Build category_products: category → list of product dicts (sorted by price)
-    category_products = _build_category_products_with_explicit_categories(
-        product_prices
-    )
+    category_products = _build_category_products_with_explicit_categories(product_prices)
     category_products = _remove_duplicates_within_categories(category_products)
 
-    _render_html(
-        category_products, history, product_prices, product_min_prices, total_history
-    )
+    _render_html(category_products, history, product_prices, product_min_prices, total_history)
 
 
 def main():

@@ -110,13 +110,9 @@ def render_component_switch_js():
 """
 
 
-def _find_best_seen_date(
-    history: pd.DataFrame, name: str, url: str, price: float
-) -> str:
+def _find_best_seen_date(history: pd.DataFrame, name: str, url: str, price: float) -> str:
     """Return formatted first-seen date matching the given product/url/price or '?' if none."""
-    history_entries = history[
-        (history["Product_Name"] == name) & (history["URL"] == url)
-    ]
+    history_entries = history[(history["Product_Name"] == name) & (history["URL"] == url)]
     if history_entries.empty:
         return "?"
     matched = history_entries.copy()
@@ -125,9 +121,7 @@ def _find_best_seen_date(
     if matched.empty:
         return "?"
     if "Timestamp_ISO" in matched.columns:
-        valid_rows = matched[
-            matched["Timestamp_ISO"].notnull() & (matched["Timestamp_ISO"] != "")
-        ]
+        valid_rows = matched[matched["Timestamp_ISO"].notnull() & (matched["Timestamp_ISO"] != "")]
         if not valid_rows.empty:
             best_row = valid_rows.sort_values(by="Timestamp_ISO").iloc[0]
             return format_french_date_full(str(best_row["Timestamp_ISO"]))
@@ -143,11 +137,7 @@ def _render_select_for_products(cat: str, products: list, selected_name: str) ->
     options = []
     for p in products:
         sel = " selected" if p["name"] == selected_name else ""
-        price = (
-            float(p["price"])
-            if isinstance(p["price"], (int, float, str))
-            else p["price"]
-        )
+        price = float(p["price"]) if isinstance(p["price"], (int, float, str)) else p["price"]
         # HTML escape user data to prevent XSS
         escaped_name = html.escape(str(p["name"]))
         escaped_url = html.escape(str(p["url"]))
@@ -184,19 +174,17 @@ def _render_summary_row(
     # Build enriched options with date and site for client-side switching
     enriched_products = []
     for p in products:
-        p_best_seen = _find_best_seen_date(
-            history, p["name"], p["url"], float(p["price"])
-        )
+        p_best_seen = _find_best_seen_date(history, p["name"], p["url"], float(p["price"]))
         enriched = dict(p)
         enriched["best_seen"] = p_best_seen
         enriched["site_label"] = get_site_label(p["url"])
         enriched_products.append(enriched)
 
-    row_html = f"<tr data-category='{cat}' class='hover:bg-slate-800/50 transition-colors duration-300'>"
-    row_html += td_category.format(cat)
-    row_html += td_product.format(
-        _render_select_for_products(cat, enriched_products, name)
+    row_html = (
+        f"<tr data-category='{cat}' class='hover:bg-slate-800/50 transition-colors duration-300'>"
     )
+    row_html += td_category.format(cat)
+    row_html += td_product.format(_render_select_for_products(cat, enriched_products, name))
     row_html += td_price.format(price)
     row_html += td_site.format(url, get_site_label(url))
     row_html += td_date.format(best_seen)
@@ -204,9 +192,7 @@ def _render_summary_row(
     return row_html
 
 
-def render_summary_table(
-    category_products, history, selected_products=None, debug_info=None
-):
+def render_summary_table(category_products, history, selected_products=None, debug_info=None):
     html = []
     html.append(render_component_switch_js())
     # We'll compute the total at the end using compute_summary_total
@@ -225,18 +211,16 @@ def render_summary_table(
     )
     selections = selected_products or {}
     TD_EMPTY = '<td class="border-t border-slate-700/50 px-6 py-5"></td>'
-    TD_CATEGORY = (
-        '<td class="border-t border-slate-700/50 px-6 py-4 text-slate-300">{}</td>'
+    TD_CATEGORY = '<td class="border-t border-slate-700/50 px-6 py-4 text-slate-300">{}</td>'
+    TD_PRODUCT = (
+        '<td class="border-t border-slate-700/50 px-6 py-4 text-slate-200 font-medium">{}</td>'
     )
-    TD_PRODUCT = '<td class="border-t border-slate-700/50 px-6 py-4 text-slate-200 font-medium">{}</td>'
     TD_PRICE = '<td class="border-t border-slate-700/50 px-6 py-4 font-bold text-green-400 text-lg">{:.2f}€</td>'
     TD_SITE = '<td class="border-t border-slate-700/50 px-6 py-4"><a href="{}" target="_blank" class="text-cyan-400 hover:text-cyan-300 underline transition-colors">{}</a></td>'
     TD_DATE = '<td class="border-t border-slate-700/50 px-6 py-4 text-sm text-slate-400">{}</td>'
     for cat, products in category_products.items():
         selected_name = selections.get(cat) if selections else products[0]["name"]
-        selected = next(
-            (p for p in products if p["name"] == selected_name), products[0]
-        )
+        selected = next((p for p in products if p["name"] == selected_name), products[0])
         html.append(
             _render_summary_row(
                 cat,
@@ -255,16 +239,10 @@ def render_summary_table(
         if debug_info and (cat, sel_name) in debug_info:
             dbg = debug_info[(cat, sel_name)]
             debug_html = "<tr class='debug-row'><td colspan='5'><div class='debug-info'><strong>Debug:</strong><ul>"
-            debug_html += "<li>Raw scraped price: {}€</li>".format(
-                dbg.get("raw_price", "?")
-            )
-            debug_html += "<li>Displayed price: {}€</li>".format(
-                dbg.get("displayed_price", "?")
-            )
+            debug_html += "<li>Raw scraped price: {}€</li>".format(dbg.get("raw_price", "?"))
+            debug_html += "<li>Displayed price: {}€</li>".format(dbg.get("displayed_price", "?"))
             if dbg.get("discrepancy"):
-                debug_html += (
-                    "<li><span style='color:red;'>Discrepancy detected!</span></li>"
-                )
+                debug_html += "<li><span style='color:red;'>Discrepancy detected!</span></li>"
             debug_html += "<li>Source: <a href='{}' target='_blank'>{}</a></li>".format(
                 dbg.get("source_url", "#"), dbg.get("source_url", "#")
             )
@@ -331,9 +309,7 @@ def _render_history_list(history_entries: pd.DataFrame, name: str) -> str:
         if _should_skip_timestamp(timestamp):
             continue
         norm_price = normalize_price(h["Price"], name)
-        if norm_price is None or (
-            isinstance(norm_price, float) and math.isnan(norm_price)
-        ):
+        if norm_price is None or (isinstance(norm_price, float) and math.isnan(norm_price)):
             continue
         ts_fmt = format_french_date_full(str(timestamp))
         lis.append(

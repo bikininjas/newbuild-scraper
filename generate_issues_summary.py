@@ -63,9 +63,7 @@ def generate_issues_summary(auto_handle=False):
     urls_to_fix = []
 
     for issue_type, type_issues in issues_by_type.items():
-        print(
-            f"\n📋 {issue_type.upper().replace('_', ' ')} ({len(type_issues)} issues)"
-        )
+        print(f"\n📋 {issue_type.upper().replace('_', ' ')} ({len(type_issues)} issues)")
         print("-" * 40)
 
         for issue in type_issues:
@@ -141,17 +139,13 @@ def generate_issues_summary(auto_handle=False):
     print("-" * 40)
     for fix in urls_to_fix:
         if fix["issue_type"] in ["404_error", "name_mismatch"]:
-            print(
-                f'# REMOVE: {fix["product_name"]},{fix["url"]},{fix.get("category", "Unknown")}'
-            )
+            print(f'# REMOVE: {fix["product_name"]},{fix["url"]},{fix.get("category", "Unknown")}')
 
     print("\n2. FIND CORRECT URLs for these products:")
     print("-" * 40)
     for fix in urls_to_fix:
         if fix["issue_type"] == "name_mismatch":
-            print(
-                f'# FIND NEW URL: {fix["product_name"]} (current URL serves wrong product)'
-            )
+            print(f'# FIND NEW URL: {fix["product_name"]} (current URL serves wrong product)')
 
     # Summary statistics
     print("\n" + "=" * 50)
@@ -159,9 +153,7 @@ def generate_issues_summary(auto_handle=False):
     print("=" * 50)
 
     total_issues = len(issues)
-    critical_issues = len(
-        [i for i in issues if i["issue_type"] in ["404_error", "name_mismatch"]]
-    )
+    critical_issues = len([i for i in issues if i["issue_type"] in ["404_error", "name_mismatch"]])
 
     print(f"Total Issues: {total_issues}")
     print(f"Critical Issues (404/Name Mismatch): {critical_issues}")
@@ -173,9 +165,7 @@ def generate_issues_summary(auto_handle=False):
         print(f"  {issue_type.replace('_', ' ').title()}: {count}")
 
     print(f"\nGenerated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(
-        "\n💡 TIP: After fixing URLs in produits.csv, run the scraper again to verify fixes."
-    )
+    print("\n💡 TIP: After fixing URLs in produits.csv, run the scraper again to verify fixes.")
 
 
 if __name__ == "__main__":

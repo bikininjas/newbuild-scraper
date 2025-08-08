@@ -1,10 +1,7 @@
 """PCComponentes specific scraping logic."""
 
 import logging
-from playwright.sync_api import (
-    TimeoutError as PlaywrightTimeoutError,
-    Error as PlaywrightError,
-)
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error as PlaywrightError
 
 
 # Mouse movement coordinates for anti-bot detection
@@ -58,9 +55,7 @@ def handle_cookie_consent(page):
                 page.wait_for_timeout(500)
                 element.click(timeout=3000)
                 page.wait_for_timeout(2000)  # Wait for the popup to disappear
-                logging.info(
-                    "[PCComponentes] Successfully clicked cookie consent button"
-                )
+                logging.info("[PCComponentes] Successfully clicked cookie consent button")
                 return
         except (PlaywrightTimeoutError, PlaywrightError):
             continue  # Try next selector
@@ -81,9 +76,7 @@ def emulate_pccomponentes_user(page):
             page.wait_for_timeout(1000)
 
         # Then perform user emulation with mouse movements
-        for x, y in PCCOMPONENTES_MOUSE_MOVES[
-            :5
-        ]:  # Reduce movements to be more natural
+        for x, y in PCCOMPONENTES_MOUSE_MOVES[:5]:  # Reduce movements to be more natural
             page.mouse.move(x, y)
             page.wait_for_timeout(200)  # Shorter delays between movements
 

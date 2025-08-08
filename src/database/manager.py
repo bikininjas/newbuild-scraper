@@ -39,9 +39,7 @@ class DatabaseManager:
     def _get_connection(self):
         """Get SQLite database connection with proper error handling."""
         if self.config.database_type != "sqlite":
-            raise ValueError(
-                "SQLite connection requested but database_type is not 'sqlite'"
-            )
+            raise ValueError("SQLite connection requested but database_type is not 'sqlite'")
 
         conn = sqlite3.connect(self.config.sqlite_path)
         conn.row_factory = sqlite3.Row  # Enable column access by name
@@ -56,9 +54,7 @@ class DatabaseManager:
             # Check if we have any products
             result = conn.execute("SELECT COUNT(*) FROM products").fetchone()
             if result[0] > 0:
-                self.logger.info(
-                    "SQLite database already contains data, skipping migration"
-                )
+                self.logger.info("SQLite database already contains data, skipping migration")
                 return
 
         self.logger.info("Migrating data from CSV to SQLite...")
@@ -176,13 +172,7 @@ class DatabaseManager:
                     """INSERT OR IGNORE INTO price_history 
                        (product_id, url, price, scraped_at, site_name) 
                        VALUES (?, ?, ?, ?, ?)""",
-                    (
-                        product_id,
-                        row["URL"],
-                        float(row["Price"]),
-                        scraped_at,
-                        site_name,
-                    ),
+                    (product_id, row["URL"], float(row["Price"]), scraped_at, site_name),
                 )
                 migrated_count += 1
 
@@ -251,14 +241,10 @@ class DatabaseManager:
                         name=row["name"],
                         category=row["category"],
                         created_at=(
-                            datetime.fromisoformat(row["created_at"])
-                            if row["created_at"]
-                            else None
+                            datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
                         ),
                         updated_at=(
-                            datetime.fromisoformat(row["updated_at"])
-                            if row["updated_at"]
-                            else None
+                            datetime.fromisoformat(row["updated_at"]) if row["updated_at"] else None
                         ),
                     )
                 )
@@ -282,11 +268,7 @@ class DatabaseManager:
                     if row.get("Product_Name", "").strip() == product_name:
                         url = row.get("URL", "").strip()
                         if url:
-                            urls.append(
-                                URLEntry(
-                                    url=url, site_name=self._extract_site_name(url)
-                                )
-                            )
+                            urls.append(URLEntry(url=url, site_name=self._extract_site_name(url)))
         except FileNotFoundError:
             pass
 
@@ -314,9 +296,7 @@ class DatabaseManager:
                         site_name=row["site_name"],
                         active=bool(row["active"]),
                         created_at=(
-                            datetime.fromisoformat(row["created_at"])
-                            if row["created_at"]
-                            else None
+                            datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
                         ),
                     )
                 )
@@ -395,9 +375,9 @@ class DatabaseManager:
         # Read existing data
         existing_data = []
         try:
-            existing_data = pd.read_csv(
-                self.config.csv_history_path, encoding="utf-8"
-            ).to_dict("records")
+            existing_data = pd.read_csv(self.config.csv_history_path, encoding="utf-8").to_dict(
+                "records"
+            )
         except FileNotFoundError:
             pass
 
@@ -466,9 +446,7 @@ class DatabaseManager:
         else:
             return self._get_price_history_sqlite(product_name)
 
-    def _get_price_history_csv(
-        self, product_name: Optional[str] = None
-    ) -> pd.DataFrame:
+    def _get_price_history_csv(self, product_name: Optional[str] = None) -> pd.DataFrame:
         """Get price history from CSV."""
         try:
             df = pd.read_csv(self.config.csv_history_path, encoding="utf-8")
@@ -476,13 +454,9 @@ class DatabaseManager:
                 df = df[df["Product_Name"] == product_name]
             return df
         except FileNotFoundError:
-            return pd.DataFrame(
-                columns=["Date", "Product_Name", "URL", "Price", "Timestamp_ISO"]
-            )
+            return pd.DataFrame(columns=["Date", "Product_Name", "URL", "Price", "Timestamp_ISO"])
 
-    def _get_price_history_sqlite(
-        self, product_name: Optional[str] = None
-    ) -> pd.DataFrame:
+    def _get_price_history_sqlite(self, product_name: Optional[str] = None) -> pd.DataFrame:
         """Get price history from SQLite."""
         with self._get_connection() as conn:
             if product_name:
@@ -546,18 +520,14 @@ class DatabaseManager:
 
             return False
 
-    def update_cache(
-        self, url: str, success: bool = True, next_retry: Optional[datetime] = None
-    ):
+    def update_cache(self, url: str, success: bool = True, next_retry: Optional[datetime] = None):
         """Update cache entry for URL."""
         if self.config.database_type != "sqlite":
             return
 
         with self._get_connection() as conn:
             # Get existing cache entry
-            existing = conn.execute(
-                "SELECT attempts FROM cache WHERE url = ?", (url,)
-            ).fetchone()
+            existing = conn.execute("SELECT attempts FROM cache WHERE url = ?", (url,)).fetchone()
             attempts = (existing["attempts"] if existing else 0) + 1
 
             status = "success" if success else "failed"
@@ -587,18 +557,14 @@ class DatabaseManager:
             )
             conn.commit()
 
-    def get_products_needing_scrape(
-        self, max_age_hours: int = 48
-    ) -> List[Tuple[str, str]]:
+    def get_products_needing_scrape(self, max_age_hours: int = 48) -> List[Tuple[str, str]]:
         """Get products that need scraping (no entries in last N hours)."""
         if self.config.database_type == "csv":
             return self._get_products_needing_scrape_csv(max_age_hours)
         else:
             return self._get_products_needing_scrape_sqlite(max_age_hours)
 
-    def _get_products_needing_scrape_csv(
-        self, max_age_hours: int
-    ) -> List[Tuple[str, str]]:
+    def _get_products_needing_scrape_csv(self, max_age_hours: int) -> List[Tuple[str, str]]:
         """Get products needing scrape from CSV."""
         cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
 
@@ -639,9 +605,7 @@ class DatabaseManager:
 
         return list(all_products - recently_scraped)
 
-    def _get_products_needing_scrape_sqlite(
-        self, max_age_hours: int
-    ) -> List[Tuple[str, str]]:
+    def _get_products_needing_scrape_sqlite(self, max_age_hours: int) -> List[Tuple[str, str]]:
         """Get products needing scrape from SQLite."""
         cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
 
@@ -686,11 +650,7 @@ class DatabaseManager:
 
             for row in rows:
                 products.append(
-                    {
-                        "URL": row["url"],
-                        "Product_Name": row["name"],
-                        "Category": row["category"],
-                    }
+                    {"URL": row["url"], "Product_Name": row["name"], "Category": row["category"]}
                 )
 
         # Save products CSV
@@ -770,9 +730,7 @@ class DatabaseManager:
             return
 
         with self._get_connection() as conn:
-            conn.execute(
-                "UPDATE product_issues SET resolved = 1 WHERE id = ?", (issue_id,)
-            )
+            conn.execute("UPDATE product_issues SET resolved = 1 WHERE id = ?", (issue_id,))
 
         self.logger.info(f"Marked issue {issue_id} as resolved")
 
@@ -798,14 +756,10 @@ class DatabaseManager:
                     name=row["name"],
                     category=row["category"],
                     created_at=(
-                        datetime.fromisoformat(row["created_at"])
-                        if row["created_at"]
-                        else None
+                        datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
                     ),
                     updated_at=(
-                        datetime.fromisoformat(row["updated_at"])
-                        if row["updated_at"]
-                        else None
+                        datetime.fromisoformat(row["updated_at"]) if row["updated_at"] else None
                     ),
                 )
             return None
@@ -822,9 +776,7 @@ class DatabaseManager:
                 self.logger.info(f"Deactivated URL due to {reason}: {url}")
             return result.rowcount > 0
 
-    def remove_product_completely(
-        self, product_id: int, reason: str = "critical issues"
-    ):
+    def remove_product_completely(self, product_id: int, reason: str = "critical issues"):
         """Remove a product completely from the database (cascade delete)."""
         if self.config.database_type != "sqlite":
             return
@@ -832,7 +784,7 @@ class DatabaseManager:
         with self._get_connection() as conn:
             # Enable foreign keys for proper cascade delete
             conn.execute("PRAGMA foreign_keys = ON")
-            
+
             # Get product name for logging
             product_row = conn.execute(
                 "SELECT name FROM products WHERE id = ?", (product_id,)
@@ -846,8 +798,7 @@ class DatabaseManager:
 
                 # Mark related issues as resolved
                 conn.execute(
-                    "UPDATE product_issues SET resolved = 1 WHERE product_id = ?",
-                    (product_id,),
+                    "UPDATE product_issues SET resolved = 1 WHERE product_id = ?", (product_id,)
                 )
 
                 # Explicit commit to ensure changes are saved
@@ -865,9 +816,7 @@ class DatabaseManager:
             return
 
         issues = self.get_product_issues(resolved=False)
-        critical_issues = [
-            i for i in issues if i["issue_type"] in ["404_error", "name_mismatch"]
-        ]
+        critical_issues = [i for i in issues if i["issue_type"] in ["404_error", "name_mismatch"]]
 
         handled_count = 0
 

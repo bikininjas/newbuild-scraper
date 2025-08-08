@@ -56,11 +56,7 @@ def handle_site_specific_page_setup(page: Page, url: str, db_manager=None) -> bo
 
 
 def extract_price_for_site(
-    soup: BeautifulSoup,
-    url: str,
-    site_selectors: list,
-    method: str = "",
-    page: "Page" = None,
+    soup: BeautifulSoup, url: str, site_selectors: list, method: str = "", page: "Page" = None
 ) -> dict:
     """
     Extract price using site-specific logic.

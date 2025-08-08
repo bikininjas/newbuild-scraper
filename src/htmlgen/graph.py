@@ -20,17 +20,9 @@ def get_price_evolution_indicator(prices, color_scheme="slate"):
     color_scheme: 'slate' (for charts) or 'gray' (for tables).
     """
     if color_scheme == "slate":
-        colors = {
-            "no_change": "text-slate-400",
-            "down": "text-green-400",
-            "up": "text-red-400",
-        }
+        colors = {"no_change": "text-slate-400", "down": "text-green-400", "up": "text-red-400"}
     else:  # gray scheme
-        colors = {
-            "no_change": "text-gray-400",
-            "down": "text-green-600",
-            "up": "text-red-600",
-        }
+        colors = {"no_change": "text-gray-400", "down": "text-green-600", "up": "text-red-600"}
 
     if len(prices) < 2 or prices[-1] is None or prices[-2] is None:
         return (
@@ -106,10 +98,7 @@ def render_price_history_graph_from_series(timestamps, prices, product_name):
         "options": {
             "responsive": True,
             "plugins": {
-                "legend": {
-                    "display": True,
-                    "labels": {"color": "#e2e8f0", "font": {"size": 11}},
-                },
+                "legend": {"display": True, "labels": {"color": "#e2e8f0", "font": {"size": 11}}},
                 "title": {
                     "display": True,
                     "text": f"Historique - {product_name}",
@@ -151,9 +140,7 @@ def render_price_history_graph(history, product_name):
     """Render a price history graph for a specific product from history data."""
     ts_col = "Timestamp_ISO" if "Timestamp_ISO" in history.columns else "Date"
     product_history = history[history["Product_Name"] == product_name]
-    timestamps, best_prices = get_best_price_per_timestamp(
-        product_history, ts_col, product_name
-    )
+    timestamps, best_prices = get_best_price_per_timestamp(product_history, ts_col, product_name)
 
     # Interpolate missing prices by repeating last known value
     prices = [
@@ -214,12 +201,8 @@ def render_all_price_graphs(product_prices, history):
         product_history = product_history.sort_values(
             by="Timestamp_ISO" if "Timestamp_ISO" in product_history.columns else "Date"
         )
-        ts_col = (
-            "Timestamp_ISO" if "Timestamp_ISO" in product_history.columns else "Date"
-        )
-        timestamps, best_prices = get_best_price_per_timestamp(
-            product_history, ts_col, name
-        )
+        ts_col = "Timestamp_ISO" if "Timestamp_ISO" in product_history.columns else "Date"
+        timestamps, best_prices = get_best_price_per_timestamp(product_history, ts_col, name)
 
         prices = [
             p if p is not None else (prices[i - 1] if i > 0 else None)

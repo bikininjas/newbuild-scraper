@@ -20,9 +20,7 @@ def compute_summary_total(category_products, selections=None) -> float:
         if not products:
             continue
         selected_name = selections.get(cat) if selections else products[0]["name"]
-        selected = next(
-            (p for p in products if p["name"] == selected_name), products[0]
-        )
+        selected = next((p for p in products if p["name"] == selected_name), products[0])
         price = float(selected["price"])
         if cat not in EXCLUDED_CATEGORIES:
             total += price

@@ -55,10 +55,7 @@ def handle_cloudflare_protection(page):
         page.wait_for_selector("body", timeout=20000)
 
         # Check if we're still on a Cloudflare page
-        if (
-            "cloudflare" in page.url.lower()
-            or "cf-browser-verification" in page.content()
-        ):
+        if "cloudflare" in page.url.lower() or "cf-browser-verification" in page.content():
             logging.warning("Cloudflare challenge detected, waiting for completion...")
             page.wait_for_timeout(10000)
 

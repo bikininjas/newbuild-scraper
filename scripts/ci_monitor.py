@@ -24,9 +24,7 @@ def gh_api(path: str):
 
 
 def get_latest_push_run(owner: str, repo: str, branch: str):
-    runs = gh_api(
-        f"/repos/{owner}/{repo}/actions/runs?branch={branch}&event=push&per_page=1"
-    )
+    runs = gh_api(f"/repos/{owner}/{repo}/actions/runs?branch={branch}&event=push&per_page=1")
     items = runs.get("workflow_runs", [])
     return items[0] if items else None
 
@@ -63,9 +61,7 @@ def main():
     print("Workflow failed; fetching job details...")
     jobs = get_jobs(OWNER, REPO, run_id)
     for job in jobs:
-        print(
-            f"Job: {job['name']} status={job['status']} conclusion={job['conclusion']}"
-        )
+        print(f"Job: {job['name']} status={job['status']} conclusion={job['conclusion']}")
         if job.get("conclusion") != "success":
             for step in job.get("steps", []):
                 print(f"  - Step: {step['name']} => {step['conclusion']}")
