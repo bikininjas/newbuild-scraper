@@ -322,25 +322,25 @@ def build_product_prices(products, history):
 def _build_category_products_with_explicit_categories(product_prices):
     """Build category_products with explicit categories from CSV, removing duplicates."""
     from collections import defaultdict
-    
+
     category_products = defaultdict(list)
     # Load products data again to get explicit categories
     products_data = load_products("produits.csv")
-    
+
     for name, entries in product_prices.items():
         # Get the explicit category from CSV
         product_data = products_data.get(name, {})
         cat = product_data.get("category", "Other")
-        
+
         for entry in entries:
             category_products[cat].append(
                 {"name": name, "price": entry["price"], "url": entry["url"]}
             )
-    
+
     # Sort each category's products by price ascending (cheapest first)
     for cat in category_products:
         category_products[cat].sort(key=lambda x: float(x["price"]))
-        
+
     return category_products
 
 
@@ -351,12 +351,16 @@ def _remove_duplicates_within_categories(category_products):
         product_groups = {}
         for product in category_products[cat]:
             name = product["name"]
-            if name not in product_groups or float(product["price"]) < float(product_groups[name]["price"]):
+            if name not in product_groups or float(product["price"]) < float(
+                product_groups[name]["price"]
+            ):
                 product_groups[name] = product
-        
+
         # Convert back to list, sorted by price
-        category_products[cat] = sorted(product_groups.values(), key=lambda x: float(x["price"]))
-    
+        category_products[cat] = sorted(
+            product_groups.values(), key=lambda x: float(x["price"])
+        )
+
     return category_products
 
 
@@ -377,7 +381,9 @@ def generate_html(product_prices, history):
     )
 
     # Build category_products: category → list of product dicts (sorted by price)
-    category_products = _build_category_products_with_explicit_categories(product_prices)
+    category_products = _build_category_products_with_explicit_categories(
+        product_prices
+    )
     category_products = _remove_duplicates_within_categories(category_products)
 
     _render_html(
