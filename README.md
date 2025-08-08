@@ -50,6 +50,18 @@ The generated HTML now includes:
 
 - "Upgrade Kit" category is treated as an alternative bundle. It's displayed in the summary table for comparison but is not included in the total row or in the total price history chart.
 
+## Configuration: excluded categories
+
+To change which categories are excluded from the total, edit:
+
+- `src/htmlgen/constants.py` — update `EXCLUDED_CATEGORIES` (a Python `set` of category names). All pricing totals and the summary table use this list.
+
+Example:
+
+```python
+EXCLUDED_CATEGORIES: set[str] = {"Upgrade Kit", "Another Alt Category"}
+```
+
 ### Known Issues / To Fix
 
 - If a product's best price is not present at every timestamp, the graph may show flat or stepped lines. This is expected.

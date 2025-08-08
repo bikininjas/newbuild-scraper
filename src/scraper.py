@@ -89,13 +89,13 @@ def handle_idealo_cookie_consent(page):
             'button:has-text("Tout accepter")',
             'button[id*="accept"]',
             'button[class*="accept"]',
-            '.uc-btn-accept-all',
+            ".uc-btn-accept-all",
             '#usercentrics-root button[data-testid="uc-accept-all-button"]',
         ]
-        
+
         # Wait a bit for the page to load
         page.wait_for_timeout(2000)
-        
+
         # Try to click on cookie consent buttons
         for selector in consent_selectors:
             try:
@@ -107,7 +107,7 @@ def handle_idealo_cookie_consent(page):
                     break
             except Exception:
                 continue
-                
+
     except Exception as e:
         logging.warning(f"[IDEALO] Cookie consent handling failed: {e}")
 

@@ -70,6 +70,74 @@ def render_component_switch_js():
 ## compute_summary_total moved to htmlgen.price_utils
 
 
+def _find_best_seen_date(
+    history: pd.DataFrame, name: str, url: str, price: float
+) -> str:
+    """Return formatted first-seen date matching the given product/url/price or '?' if none."""
+    history_entries = history[
+        (history["Product_Name"] == name) & (history["URL"] == url)
+    ]
+    if history_entries.empty:
+        return "?"
+    matched = history_entries.copy()
+    matched["Price_float"] = matched["Price"].apply(price_to_float)
+    matched = matched[np.isclose(matched["Price_float"], price, atol=0.01)]
+    if matched.empty:
+        return "?"
+    if "Timestamp_ISO" in matched.columns:
+        valid_rows = matched[
+            matched["Timestamp_ISO"].notnull() & (matched["Timestamp_ISO"] != "")
+        ]
+        if not valid_rows.empty:
+            best_row = valid_rows.sort_values(by="Timestamp_ISO").iloc[0]
+            return format_french_date_full(str(best_row["Timestamp_ISO"]))
+    if "Date" in matched.columns:
+        valid_rows = matched[matched["Date"].notnull() & (matched["Date"] != "")]
+        if not valid_rows.empty:
+            best_row = valid_rows.sort_values(by="Date").iloc[0]
+            return format_french_date_full(str(best_row["Date"]))
+    return "?"
+
+
+def _render_select_for_products(cat: str, products: list, selected_name: str) -> str:
+    options = []
+    for p in products:
+        sel = " selected" if p["name"] == selected_name else ""
+        options.append(f'<option value="{p["name"]}"{sel}>{p["name"]}</option>')
+    return (
+        "<select onchange=\"switchComponent('"
+        + cat
+        + "', this.value)\">"
+        + "".join(options)
+        + "</select>"
+    )
+
+
+def _render_summary_row(
+    cat: str,
+    products: list,
+    selected: dict,
+    history: pd.DataFrame,
+    td_category: str,
+    td_product: str,
+    td_price: str,
+    td_site: str,
+    td_date: str,
+) -> str:
+    name = selected["name"]
+    price = float(selected["price"])
+    url = selected["url"]
+    best_seen = _find_best_seen_date(history, name, url, price)
+    row_html = "<tr class='hover:bg-slate-800/50 transition-colors duration-300'>"
+    row_html += td_category.format(cat)
+    row_html += td_product.format(_render_select_for_products(cat, products, name))
+    row_html += td_price.format(price)
+    row_html += td_site.format(url, get_site_label(url))
+    row_html += td_date.format(best_seen)
+    row_html += "</tr>"
+    return row_html
+
+
 def render_summary_table(
     category_products, history, selected_products=None, debug_info=None
 ):
@@ -103,62 +171,23 @@ def render_summary_table(
         selected = next(
             (p for p in products if p["name"] == selected_name), products[0]
         )
-        name = selected["name"]
-        price = float(selected["price"])
-        url = selected["url"]
-        # Find all history entries for this product and URL
-        history_entries = history[
-            (history["Product_Name"] == name) & (history["URL"] == url)
-        ]
-        matched = history_entries.copy()
-        matched["Price_float"] = matched["Price"].apply(price_to_float)
-        matched = matched[np.isclose(matched["Price_float"], price, atol=0.01)]
-        best_seen = "?"
-        if not matched.empty:
-            if "Timestamp_ISO" in matched.columns:
-                valid_rows = matched[
-                    matched["Timestamp_ISO"].notnull()
-                    & (matched["Timestamp_ISO"] != "")
-                ]
-                if not valid_rows.empty:
-                    best_row = valid_rows.sort_values(by="Timestamp_ISO").iloc[0]
-                    best_seen = format_french_date_full(str(best_row["Timestamp_ISO"]))
-            elif "Date" in matched.columns:
-                valid_rows = matched[
-                    matched["Date"].notnull() & (matched["Date"] != "")
-                ]
-                if not valid_rows.empty:
-                    best_row = valid_rows.sort_values(by="Date").iloc[0]
-                    best_seen = format_french_date_full(str(best_row["Date"]))
-        # site_label variable removed (was unused)
-        row_html = "<tr class='hover:bg-slate-800/50 transition-colors duration-300'>"
-        row_html += TD_CATEGORY.format(cat)
-        row_html += TD_PRODUCT.format(
-            "<select onchange=\"switchComponent('"
-            + cat
-            + "', this.value)\">"
-            + "".join(
-                [
-                    '<option value="'
-                    + p["name"]
-                    + '"'
-                    + (" selected" if p["name"] == name else "")
-                    + ">"
-                    + p["name"]
-                    + "</option>"
-                    for p in products
-                ]
+        html.append(
+            _render_summary_row(
+                cat,
+                products,
+                selected,
+                history,
+                TD_CATEGORY,
+                TD_PRODUCT,
+                TD_PRICE,
+                TD_SITE,
+                TD_DATE,
             )
-            + "</select>"
         )
-        row_html += TD_PRICE.format(price)
-        row_html += TD_SITE.format(url, get_site_label(url))
-        row_html += TD_DATE.format(best_seen)
-        row_html += "</tr>"
-        html.append(row_html)
         # Debug info row
-        if debug_info and (cat, name) in debug_info:
-            dbg = debug_info[(cat, name)]
+        sel_name = selected.get("name")
+        if debug_info and (cat, sel_name) in debug_info:
+            dbg = debug_info[(cat, sel_name)]
             debug_html = "<tr class='debug-row'><td colspan='5'><div class='debug-info'><strong>Debug:</strong><ul>"
             debug_html += "<li>Raw scraped price: {}€</li>".format(
                 dbg.get("raw_price", "?")
@@ -199,6 +228,53 @@ def render_summary_table(
             + "</div>"
         )
     return "\n".join(html)
+
+
+def _should_skip_timestamp(timestamp) -> bool:
+    if (
+        timestamp is None
+        or (isinstance(timestamp, float) and math.isnan(timestamp))
+        or (
+            isinstance(timestamp, str)
+            and (timestamp.strip() == "" or timestamp.strip().lower() == "nan")
+        )
+    ):
+        return True
+    return False
+
+
+def _render_price_list(entries, name: str) -> str:
+    items = []
+    for entry in entries:
+        norm_price = normalize_price(entry["price"], name)
+        items.append(
+            '<li class="price-item p-4 rounded-xl transition-all duration-300">'
+            f'<span class="font-bold text-green-400 text-lg">{norm_price}€</span> @ '
+            f'<a href="{entry["url"]}" target="_blank" class="text-cyan-400 hover:text-cyan-300 underline transition-colors ml-2">{get_site_label(entry["url"])}</a>'
+            "</li>"
+        )
+    return '<ul class="mb-6 space-y-3">' + "".join(items) + "</ul>"
+
+
+def _render_history_list(history_entries: pd.DataFrame, name: str) -> str:
+    lis = []
+    for _, h in history_entries.iterrows():
+        timestamp = h["Timestamp_ISO"] if "Timestamp_ISO" in h else h.get("Date", "?")
+        if _should_skip_timestamp(timestamp):
+            continue
+        norm_price = normalize_price(h["Price"], name)
+        if norm_price is None or (
+            isinstance(norm_price, float) and math.isnan(norm_price)
+        ):
+            continue
+        ts_fmt = format_french_date_full(str(timestamp))
+        lis.append(
+            f'<li class="history-item mb-2 p-3 rounded-xl transition-all duration-300">{ts_fmt}: '
+            f'<span class="font-bold text-green-400">{norm_price}€</span> @ '
+            f'<a href="{h["URL"]}" target="_blank" class="text-cyan-400 hover:text-cyan-300 underline transition-colors ml-2">{get_site_label(h["URL"])}</a>'
+            "</li>"
+        )
+    return '<ul class="text-sm text-slate-400 space-y-3">' + "".join(lis) + "</ul>"
 
 
 def render_product_cards(product_prices, history, product_min_prices):
@@ -245,16 +321,7 @@ def render_product_cards(product_prices, history, product_min_prices):
             f'<a href="{best["url"]}" target="_blank" class="underline hover:text-slate-200 transition-colors">{get_site_label(best["url"])}</a>'
             "</span></div>"
         )
-        html.append('<ul class="mb-6 space-y-3">')
-        for entry in entries:
-            norm_price = normalize_price(entry["price"], name)
-        html.append(
-            '<li class="price-item p-4 rounded-xl transition-all duration-300">'
-            f'<span class="font-bold text-green-400 text-lg">{norm_price}€</span> @ '
-            f'<a href="{entry["url"]}" target="_blank" class="text-cyan-400 hover:text-cyan-300 underline transition-colors ml-2">{get_site_label(entry["url"])}</a>'
-            "</li>"
-        )
-        html.append("</ul>")
+        html.append(_render_price_list(entries, name))
         html.append('<div class="mt-6">')
         html.append(
             render_price_history_graph_from_series(
@@ -282,36 +349,7 @@ def render_product_cards(product_prices, history, product_min_prices):
             html.append(
                 '<div class="font-semibold text-slate-300 mb-3 text-lg flex items-center gap-2">📈 Historique des prix :</div>'
             )
-            html.append('<ul class="text-sm text-slate-400 space-y-3">')
-            for _, h in history_entries.iterrows():
-                timestamp = (
-                    h["Timestamp_ISO"] if "Timestamp_ISO" in h else h.get("Date", "?")
-                )
-                if (
-                    timestamp is None
-                    or (isinstance(timestamp, float) and math.isnan(timestamp))
-                    or (
-                        isinstance(timestamp, str)
-                        and (
-                            timestamp.strip() == ""
-                            or timestamp.strip().lower() == "nan"
-                        )
-                    )
-                ):
-                    continue
-                norm_price = normalize_price(h["Price"], name)
-                if norm_price is None or (
-                    isinstance(norm_price, float) and math.isnan(norm_price)
-                ):
-                    continue
-                ts_fmt = format_french_date_full(str(timestamp))
-                html.append(
-                    f'<li class="history-item mb-2 p-3 rounded-xl transition-all duration-300">'
-                    f'{ts_fmt}: <span class="font-bold text-green-400">{norm_price}€</span> @ '
-                    f'<a href="{h["URL"]}" target="_blank" class="text-cyan-400 hover:text-cyan-300 underline transition-colors ml-2">{get_site_label(h["URL"])}</a>'
-                    "</li>"
-                )
-            html.append("</ul>")
+            html.append(_render_history_list(history_entries, name))
             html.append(DIV_END)
         else:
             html.append(

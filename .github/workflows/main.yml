@@ -1,6 +1,9 @@
 name: Price Scraper
 
 on:
+  push:
+    branches: ['**']
+  pull_request:
   schedule:
     - cron: '0 */4 * * *'
   workflow_dispatch:
@@ -18,6 +21,10 @@ jobs:
           python-version: '3.10'
       - name: Install dependencies
         run: pip install -r requirements.txt
+      - name: Lint (Black)
+        run: black --check .
+      - name: Run unit tests
+        run: pytest -q
       - name: Install Playwright
         run: |
           pip install playwright black
