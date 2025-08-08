@@ -143,9 +143,14 @@ def extract_product_name_from_page(page: Page) -> str:
     return product_name
 
 
-def check_product_mismatch(page: Page, original_url: str) -> bool:
+def check_product_mismatch(page: Page, original_url: str, db_manager=None) -> bool:
     """
     Check if the Idealo page serves the expected product based on URL.
+
+    Args:
+        page: Playwright page object
+        original_url: Original URL being scraped
+        db_manager: DatabaseManager instance for logging issues
 
     Returns True if mismatch is detected, False otherwise.
     """
@@ -165,6 +170,11 @@ def check_product_mismatch(page: Page, original_url: str) -> bool:
 
     logger.info(f"[IDEALO] Product name found on page: {actual_product_name}")
 
+    # Get product info for database logging
+    product = None
+    if db_manager:
+        product = db_manager.get_product_by_url(original_url)
+
     # Check brand mismatch
     expected_brand = expected["brand"]
     brand_found = expected_brand.lower() in actual_product_name.lower()
@@ -173,6 +183,21 @@ def check_product_mismatch(page: Page, original_url: str) -> bool:
         logger.warning("[IDEALO] Product brand mismatch detected!")
         logger.warning(f"[IDEALO] Expected: {expected_brand} product (from URL)")
         logger.warning(f"[IDEALO] Actual product: {actual_product_name}")
+
+        # Log to database if available
+        if db_manager and product:
+            db_manager.log_product_issue(
+                product_id=product.id,
+                url=original_url,
+                issue_type="name_mismatch",
+                expected_name=f"{expected_brand} {' '.join(expected.get('model_keywords', []))}".strip(),
+                actual_name=actual_product_name,
+                error_message=f"Brand mismatch: expected {expected_brand}, found {actual_product_name}",
+            )
+
+            # Automatically deactivate URL for name mismatch
+            db_manager.deactivate_product_url(original_url, "name mismatch")
+            logger.warning(f"Deactivated URL due to name mismatch: {original_url}")
 
         # Log critical error with actionable guidance
         logger.error(
@@ -198,6 +223,21 @@ def check_product_mismatch(page: Page, original_url: str) -> bool:
             logger.warning("[IDEALO] Product model mismatch detected!")
             logger.warning(f"[IDEALO] Expected keywords: {model_keywords} (from URL)")
             logger.warning(f"[IDEALO] Actual product: {actual_product_name}")
+
+            # Log to database if available
+            if db_manager and product:
+                db_manager.log_product_issue(
+                    product_id=product.id,
+                    url=original_url,
+                    issue_type="name_mismatch",
+                    expected_name=f"{expected_brand} {' '.join(model_keywords)}".strip(),
+                    actual_name=actual_product_name,
+                    error_message=f"Model mismatch: expected keywords {model_keywords}, found {actual_product_name}",
+                )
+
+                # Automatically deactivate URL for model mismatch
+                db_manager.deactivate_product_url(original_url, "model mismatch")
+                logger.warning(f"Deactivated URL due to model mismatch: {original_url}")
 
             # Log critical error and recommendation
             logger.error(f"[IDEALO] CRITICAL: URL {original_url} serves wrong product!")
@@ -1053,7 +1093,7 @@ def clear_amazon_info():
     _amazon_prime_info = False
 
 
-def handle_idealo_page(page: Page, url: str) -> bool:
+def handle_idealo_page(page: Page, url: str, db_manager=None) -> bool:
     """
     Handle Idealo-specific page processing.
 
@@ -1067,7 +1107,7 @@ def handle_idealo_page(page: Page, url: str) -> bool:
         page.wait_for_timeout(3000)
 
         # Check for product mismatch
-        mismatch_detected = check_product_mismatch(page, url)
+        mismatch_detected = check_product_mismatch(page, url, db_manager)
 
         if mismatch_detected:
             logger.error(

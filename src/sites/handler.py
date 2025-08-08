@@ -32,7 +32,7 @@ def clean_url_for_site(url: str) -> str:
     return url
 
 
-def handle_site_specific_page_setup(page: Page, url: str) -> bool:
+def handle_site_specific_page_setup(page: Page, url: str, db_manager=None) -> bool:
     """
     Handle site-specific page setup and validation.
 
@@ -48,7 +48,7 @@ def handle_site_specific_page_setup(page: Page, url: str) -> bool:
         wait_for_topachat_price(page)
     elif is_idealo:
         # Handle Idealo-specific processing (cookies, mismatch detection, etc.)
-        if not handle_idealo_page(page, url):
+        if not handle_idealo_page(page, url, db_manager):
             # Page validation failed (product mismatch), skip price extraction
             return False
 

@@ -75,11 +75,11 @@ def append_row(
     )
 
 
-def get_idealo_price(url):
+def get_idealo_price(url, db_manager=None):
     selectors = get_site_selector(url)
-    price_info = get_price_requests(url, selectors)
+    price_info = get_price_requests(url, selectors, db_manager)
     if price_info is None:
-        price_info = get_price_playwright(url, selectors)
+        price_info = get_price_playwright(url, selectors, db_manager)
     if price_info is None:
         logging.warning(
             f"[IDEALO] Selector .productOffers-listItemOfferPrice may be invalid for {url}"
@@ -88,14 +88,14 @@ def get_idealo_price(url):
     return price_info
 
 
-def get_fallback_price(url):
+def get_fallback_price(url, db_manager=None):
     fallback_sites = ["topachat.com", "amazon.fr", "ldlc.com", "materiel.net"]
     selectors = get_site_selector(url)
     for site in fallback_sites:
         if site in url:
-            price_info = get_price_requests(url, selectors)
+            price_info = get_price_requests(url, selectors, db_manager)
             if price_info is None:
-                price_info = get_price_playwright(url, selectors)
+                price_info = get_price_playwright(url, selectors, db_manager)
             if price_info is not None:
                 return price_info, site
     return None, None
@@ -110,7 +110,7 @@ def process_product_row_db(
     price_info = None
 
     if "idealo.fr" in url:
-        price_info = get_idealo_price(url)
+        price_info = get_idealo_price(url, db_manager)
         if price_info is not None:
             append_row(
                 product_prices,
@@ -124,7 +124,7 @@ def process_product_row_db(
                 args,
             )
         else:
-            price_info, site = get_fallback_price(url)
+            price_info, site = get_fallback_price(url, db_manager)
             if price_info is not None:
                 append_row(
                     product_prices,
@@ -138,7 +138,7 @@ def process_product_row_db(
                     args,
                 )
     else:
-        price_info, site = get_fallback_price(url)
+        price_info, site = get_fallback_price(url, db_manager)
         if price_info is not None:
             append_row(
                 product_prices,
@@ -254,9 +254,8 @@ def setup_database_manager(args):
     else:
         db_config = DatabaseConfig.from_env()
 
-    # Override database type if specified
-    if args.db_type:
-        db_config.database_type = args.db_type
+    # Force SQLite as the only supported database type
+    db_config.database_type = "sqlite"
 
     db_manager = DatabaseManager(db_config)
     logging.info(f"Using {db_config.database_type} database backend")
@@ -346,9 +345,6 @@ def save_scraping_results(updated_rows, db_manager, db_config):
 def main():
     parser = argparse.ArgumentParser(description="Product price scraper")
     parser.add_argument(
-        "--site", type=str, help="Only test URLs containing this domain", default=None
-    )
-    parser.add_argument(
         "--no-html", action="store_true", help="Do not generate output.html"
     )
     parser.add_argument(
@@ -357,12 +353,6 @@ def main():
         nargs="*",
         default=DEFAULT_DEBUG_DOMAINS,
         help="Domains for which to enable debug logging (default: topachat.com)",
-    )
-    parser.add_argument(
-        "--db-type",
-        type=str,
-        choices=["sqlite", "csv"],
-        help="Database type to use (overrides config file)",
     )
     parser.add_argument(
         "--new-products-only",

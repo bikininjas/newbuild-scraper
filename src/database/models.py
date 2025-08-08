@@ -157,6 +157,21 @@ CREATE TABLE IF NOT EXISTS cache (
     next_retry TIMESTAMP NULL
 );
 
+-- Product issues table (for tracking mismatches, 404s, and other problems)
+CREATE TABLE IF NOT EXISTS product_issues (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id INTEGER NOT NULL,
+    url TEXT NOT NULL,
+    issue_type TEXT NOT NULL, -- 'name_mismatch', '404_error', 'scrape_error', 'anti_bot'
+    expected_name TEXT,
+    actual_name TEXT,
+    error_message TEXT,
+    http_status_code INTEGER,
+    detected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    resolved BOOLEAN DEFAULT 0,
+    FOREIGN KEY (product_id) REFERENCES products (id) ON DELETE CASCADE
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_products_name ON products(name);
 CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
@@ -169,4 +184,8 @@ CREATE INDEX IF NOT EXISTS idx_price_history_vendor_name ON price_history(vendor
 CREATE INDEX IF NOT EXISTS idx_cache_url ON cache(url);
 CREATE INDEX IF NOT EXISTS idx_cache_last_scraped ON cache(last_scraped);
 CREATE INDEX IF NOT EXISTS idx_cache_status ON cache(status);
+CREATE INDEX IF NOT EXISTS idx_product_issues_product_id ON product_issues(product_id);
+CREATE INDEX IF NOT EXISTS idx_product_issues_issue_type ON product_issues(issue_type);
+CREATE INDEX IF NOT EXISTS idx_product_issues_detected_at ON product_issues(detected_at);
+CREATE INDEX IF NOT EXISTS idx_product_issues_resolved ON product_issues(resolved);
 """

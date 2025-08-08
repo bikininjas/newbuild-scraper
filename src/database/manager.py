@@ -702,3 +702,192 @@ class DatabaseManager:
         df_history.to_csv(self.config.csv_history_path, index=False, encoding="utf-8")
 
         self.logger.info("Data exported to CSV files")
+
+    # Product issues tracking methods
+    def log_product_issue(
+        self,
+        product_id: int,
+        url: str,
+        issue_type: str,
+        expected_name: str = None,
+        actual_name: str = None,
+        error_message: str = None,
+        http_status_code: int = None,
+    ):
+        """Log a product issue to the database."""
+        if self.config.database_type != "sqlite":
+            return  # Only available for SQLite
+
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO product_issues 
+                (product_id, url, issue_type, expected_name, actual_name, error_message, http_status_code)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+                (
+                    product_id,
+                    url,
+                    issue_type,
+                    expected_name,
+                    actual_name,
+                    error_message,
+                    http_status_code,
+                ),
+            )
+
+        self.logger.info(f"Logged {issue_type} issue for product {product_id}: {url}")
+
+    def get_product_issues(self, resolved: bool = None) -> List[dict]:
+        """Get product issues from the database."""
+        if self.config.database_type != "sqlite":
+            return []
+
+        with self._get_connection() as conn:
+            if resolved is None:
+                query = """
+                    SELECT pi.*, p.name as product_name, p.category
+                    FROM product_issues pi
+                    JOIN products p ON pi.product_id = p.id
+                    ORDER BY pi.detected_at DESC
+                """
+                rows = conn.execute(query).fetchall()
+            else:
+                query = """
+                    SELECT pi.*, p.name as product_name, p.category
+                    FROM product_issues pi
+                    JOIN products p ON pi.product_id = p.id
+                    WHERE pi.resolved = ?
+                    ORDER BY pi.detected_at DESC
+                """
+                rows = conn.execute(query, (1 if resolved else 0,)).fetchall()
+
+            return [dict(row) for row in rows]
+
+    def resolve_product_issue(self, issue_id: int):
+        """Mark a product issue as resolved."""
+        if self.config.database_type != "sqlite":
+            return
+
+        with self._get_connection() as conn:
+            conn.execute(
+                "UPDATE product_issues SET resolved = 1 WHERE id = ?", (issue_id,)
+            )
+
+        self.logger.info(f"Marked issue {issue_id} as resolved")
+
+    def get_product_by_url(self, url: str) -> Optional[Product]:
+        """Get product information by URL."""
+        if self.config.database_type != "sqlite":
+            return None
+
+        with self._get_connection() as conn:
+            row = conn.execute(
+                """
+                SELECT p.id, p.name, p.category, p.created_at, p.updated_at
+                FROM products p
+                JOIN urls u ON p.id = u.product_id
+                WHERE u.url = ?
+            """,
+                (url,),
+            ).fetchone()
+
+            if row:
+                return Product(
+                    id=row["id"],
+                    name=row["name"],
+                    category=row["category"],
+                    created_at=(
+                        datetime.fromisoformat(row["created_at"])
+                        if row["created_at"]
+                        else None
+                    ),
+                    updated_at=(
+                        datetime.fromisoformat(row["updated_at"])
+                        if row["updated_at"]
+                        else None
+                    ),
+                )
+            return None
+
+    def deactivate_product_url(self, url: str, reason: str = "problematic"):
+        """Deactivate a specific URL due to issues."""
+        if self.config.database_type != "sqlite":
+            return
+
+        with self._get_connection() as conn:
+            result = conn.execute("UPDATE urls SET active = 0 WHERE url = ?", (url,))
+            if result.rowcount > 0:
+                conn.commit()  # Explicit commit
+                self.logger.info(f"Deactivated URL due to {reason}: {url}")
+            return result.rowcount > 0
+
+    def remove_product_completely(
+        self, product_id: int, reason: str = "critical issues"
+    ):
+        """Remove a product completely from the database (cascade delete)."""
+        if self.config.database_type != "sqlite":
+            return
+
+        with self._get_connection() as conn:
+            # Enable foreign keys for proper cascade delete
+            conn.execute("PRAGMA foreign_keys = ON")
+            
+            # Get product name for logging
+            product_row = conn.execute(
+                "SELECT name FROM products WHERE id = ?", (product_id,)
+            ).fetchone()
+
+            if product_row:
+                product_name = product_row["name"]
+
+                # Delete product (cascades to urls, price_history)
+                conn.execute("DELETE FROM products WHERE id = ?", (product_id,))
+
+                # Mark related issues as resolved
+                conn.execute(
+                    "UPDATE product_issues SET resolved = 1 WHERE product_id = ?",
+                    (product_id,),
+                )
+
+                # Explicit commit to ensure changes are saved
+                conn.commit()
+
+                self.logger.info(
+                    f"Removed product '{product_name}' (ID: {product_id}) due to {reason}"
+                )
+                return True
+            return False
+
+    def auto_handle_critical_issues(self, auto_remove: bool = True):
+        """Automatically handle critical product issues."""
+        if self.config.database_type != "sqlite":
+            return
+
+        issues = self.get_product_issues(resolved=False)
+        critical_issues = [
+            i for i in issues if i["issue_type"] in ["404_error", "name_mismatch"]
+        ]
+
+        handled_count = 0
+
+        for issue in critical_issues:
+            product_id = issue["product_id"]
+            url = issue["url"]
+            issue_type = issue["issue_type"]
+
+            if issue_type == "404_error" and auto_remove:
+                # Remove products with 404 errors completely
+                if self.remove_product_completely(product_id, "404 error"):
+                    handled_count += 1
+            elif issue_type == "name_mismatch":
+                # Deactivate URLs with name mismatches (don't remove product completely)
+                if self.deactivate_product_url(url, "name mismatch"):
+                    # Mark this specific issue as resolved
+                    self.resolve_product_issue(issue["id"])
+                    handled_count += 1
+
+        if handled_count > 0:
+            self.logger.info(f"Auto-handled {handled_count} critical product issues")
+
+        return handled_count

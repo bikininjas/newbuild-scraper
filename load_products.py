@@ -66,20 +66,45 @@ class ProductLoader:
 
                 # Check if URL is accessible (basic validation)
                 if self._is_valid_url(url):
-                    # Add product to database
-                    success = self.db_manager.add_product(product_name, category)
-                    if success:
-                        # Add URL entry
-                        success = self.db_manager.add_url_entry(product_name, url)
-                        if success:
-                            loaded_count += 1
-                            logger.info(f"✓ Loaded: {product_name} - {url}")
-                        else:
+                    # Add product via direct SQLite operations
+                    with self.db_manager._get_connection() as conn:
+                        # Insert product
+                        try:
+                            conn.execute(
+                                "INSERT OR IGNORE INTO products (name, category) VALUES (?, ?)",
+                                (product_name, category),
+                            )
+
+                            # Get product ID
+                            product_result = conn.execute(
+                                "SELECT id FROM products WHERE name = ?",
+                                (product_name,),
+                            ).fetchone()
+
+                            if product_result:
+                                product_id = product_result[0]
+                                site_name = self._extract_site_name(url)
+
+                                # Insert URL
+                                conn.execute(
+                                    "INSERT OR IGNORE INTO urls (product_id, url, site_name) VALUES (?, ?, ?)",
+                                    (product_id, url, site_name),
+                                )
+
+                                conn.commit()
+                                loaded_count += 1
+                                logger.info(f"✓ Loaded: {product_name} - {url}")
+                            else:
+                                failed_urls.append(url)
+                                logger.warning(
+                                    f"✗ Failed to get product ID: {product_name}"
+                                )
+
+                        except Exception as e:
                             failed_urls.append(url)
-                            logger.warning(f"✗ Failed to add URL: {url}")
-                    else:
-                        failed_urls.append(url)
-                        logger.warning(f"✗ Failed to add product: {product_name}")
+                            logger.warning(
+                                f"✗ Failed to add product: {product_name} - {e}"
+                            )
                 else:
                     failed_urls.append(url)
                     logger.warning(f"✗ Invalid/inaccessible URL: {url}")
@@ -93,6 +118,23 @@ class ProductLoader:
         except Exception as e:
             logger.error(f"Error loading products from CSV: {e}")
             return 0, []
+
+    def _extract_site_name(self, url: str) -> str:
+        """Extract site name from URL."""
+        sites = {
+            "amazon.fr": "Amazon",
+            "idealo.fr": "Idealo",
+            "ldlc.com": "LDLC",
+            "topachat.com": "TopAchat",
+            "materiel.net": "Materiel.net",
+            "pccomponentes.fr": "PC Componentes",
+        }
+
+        for domain, name in sites.items():
+            if domain in url:
+                return name
+
+        return "Unknown"
 
     def _is_valid_url(self, url: str) -> bool:
         """Basic URL validation."""

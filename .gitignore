@@ -3,6 +3,16 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# Test, debug, and check scripts
+test_*.py
+debug_*.py
+check_*.py
+tests/
+scraper.log
+.pytest_cache/
+.venv/
+idealo_test.csv
+
 # VS Code
 .vscode/
 

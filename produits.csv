@@ -1,1 +1,4 @@
 Product_Name,URL,Category
+# Example products (these will NOT be loaded),# Add your product URLs here,"# Categories: SSD, RAM, CPU, GPU, etc."
+Samsung 990 EVO 1TB,https://example.com/samsung-990-evo-1tb,SSD
+Corsair MP700 Elite 1TB,https://example.com/corsair-mp700-elite-1tb,SSD

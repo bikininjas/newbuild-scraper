@@ -265,6 +265,20 @@ python src/main.py --no-html
   export DISCORD_WEBHOOK_URL='your_webhook_url'
   ```
 
+
+### TopAchat URL Fix & Workflow
+
+**TopAchat URL Format:**
+Product URLs in produits.csv must use the full TopAchat format, e.g.:
+https://www.topachat.com/pages/detail2_cat_est_micro_puis_rubrique_est_w_ssd_puis_ref_est_in20023645.html
+
+**Workflow:**
+1. Clean database and cache: `rm -f data/scraper.db historique_prix.csv scraper.log`
+2. Add valid product URLs to produits.csv
+3. Run `python load_products.py` to load products
+4. Run `python src/main.py` to scrape and log issues
+5. Run `python generate_issues_summary.py` to review issues
+
 ### 6. Run automatically with GitHub Actions
 
 - Add your webhook to GitHub Actions secrets as `DISCORD_WEBHOOK_URL`

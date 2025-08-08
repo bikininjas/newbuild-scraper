@@ -47,6 +47,19 @@ The goal of this project is to build a Python-based price tracker and HTML repor
 - **Failed URL Tracking**: Comprehensive logging and handling of problematic URLs
 - **Template System**: Updated `produits.csv` as template with example entries for easy product addition
 
+### 🛠️ TopAchat URL Fix & Workflow
+
+**TopAchat URL Format:**
+Product URLs in produits.csv must use the full TopAchat format, e.g.:
+https://www.topachat.com/pages/detail2_cat_est_micro_puis_rubrique_est_w_ssd_puis_ref_est_in20023645.html
+
+**Workflow:**
+1. Clean database and cache: `rm -f data/scraper.db historique_prix.csv scraper.log`
+2. Add valid product URLs to produits.csv
+3. Run `python load_products.py` to load products
+4. Run `python src/main.py` to scrape and log issues
+5. Run `python generate_issues_summary.py` to review issues
+
 ### ✅ **COMPLETED**: Project Organization and Documentation
 - **Test Cleanup**: Removed all debugging scripts and test CSV files for production readiness
 - **Documentation Updates**: Enhanced README.md with Idealo integration details and technical architecture
