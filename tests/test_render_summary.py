@@ -2,6 +2,7 @@ import os
 import sys
 import unittest
 from html import unescape
+import pandas as pd
 
 # Ensure src/ is on sys.path for imports
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,8 +26,6 @@ class TestRenderSummary(unittest.TestCase):
         }
 
         # Build minimal history DataFrame with matching row for CPU
-        import pandas as pd
-
         history = pd.DataFrame(
             [
                 {
