@@ -71,6 +71,7 @@ def render_summary_table(
     html = []
     html.append(render_component_switch_js())
     total_price = 0
+    EXCLUDED_FROM_TOTAL = {"Upgrade Kit"}
     html.append('<div class="overflow-x-auto mb-10">')
     html.append(
         '<table class="min-w-full glass-card rounded-xl shadow-2xl border border-slate-600 overflow-hidden">'
@@ -101,7 +102,9 @@ def render_summary_table(
         name = selected["name"]
         price = float(selected["price"])
         url = selected["url"]
-        total_price += price
+        # Exclude certain categories (e.g., Upgrade Kits) from the total calculation
+        if cat not in EXCLUDED_FROM_TOTAL:
+            total_price += price
         # Find all history entries for this product and URL
         history_entries = history[
             (history["Product_Name"] == name) & (history["URL"] == url)
@@ -181,6 +184,18 @@ def render_summary_table(
         + "</tr>"
     )
     html.append("</tbody></table></div>")
+    # Clarify that some categories are excluded from the total
+    if EXCLUDED_FROM_TOTAL:
+        html.append(
+            '<div class="text-sm text-yellow-300/80 mt-2">\n'
+            + " ".join(
+                [
+                    f"⚠️ {cat} non inclus dans le total (alternative aux composants)."
+                    for cat in sorted(EXCLUDED_FROM_TOTAL)
+                ]
+            )
+            + "</div>"
+        )
     return "\n".join(html)
 
 
