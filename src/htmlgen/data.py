@@ -13,7 +13,10 @@ def load_products(csv_path):
         for row in reader:
             name = row["Product_Name"].strip()
             url = row["URL"].strip()
-            products.setdefault(name, []).append(url)
+            category = row.get("Category", "Other").strip()
+            products.setdefault(name, {"urls": [], "category": category})
+            if url not in products[name]["urls"]:
+                products[name]["urls"].append(url)
     return products
 
 

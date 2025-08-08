@@ -19,12 +19,11 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Install Playwright
-        run: pip install playwright
-      - name: Install Playwright dependencies (Ubuntu)
         run: |
+          pip install playwright black
           npx playwright install-deps
-      - name: Install Playwright browsers
-        run: python -m playwright install
+          python -m playwright install
+
       - name: Run scraper
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}

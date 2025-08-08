@@ -239,6 +239,9 @@ def _render_html(
         "    tbody tr { background: rgba(15, 23, 42, 0.8) !important; }",
         "    tbody tr:hover { background: rgba(30, 41, 59, 0.8) !important; }",
         "    th, td { border-color: rgba(51, 65, 85, 0.4) !important; }",
+        "    select { background: rgba(15, 23, 42, 0.95) !important; color: #e2e8f0 !important; border: 1px solid rgba(51, 65, 85, 0.4) !important; border-radius: 8px; padding: 8px 12px; font-size: 14px; }",
+        "    select:focus { outline: none; border-color: rgba(56, 189, 248, 0.5) !important; box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1); }",
+        "    select option { background: rgba(15, 23, 42, 0.95) !important; color: #e2e8f0 !important; }",
         "  </style>",
         "</head>",
         '<body class="bg-slate-900 font-inter min-h-screen">',
@@ -302,7 +305,8 @@ def build_product_prices(products, history):
     """Build product prices dictionary from products and history data."""
     product_prices = {}
 
-    for name, urls in products.items():
+    for name, product_data in products.items():
+        urls = product_data["urls"]
         entries = []
         for url in urls:
             price_entry = _get_latest_price_for_url(history, name, url)
@@ -313,6 +317,47 @@ def build_product_prices(products, history):
             product_prices[name] = entries
 
     return product_prices
+
+
+def _build_category_products_with_explicit_categories(product_prices):
+    """Build category_products with explicit categories from CSV, removing duplicates."""
+    from collections import defaultdict
+    
+    category_products = defaultdict(list)
+    # Load products data again to get explicit categories
+    products_data = load_products("produits.csv")
+    
+    for name, entries in product_prices.items():
+        # Get the explicit category from CSV
+        product_data = products_data.get(name, {})
+        cat = product_data.get("category", "Other")
+        
+        for entry in entries:
+            category_products[cat].append(
+                {"name": name, "price": entry["price"], "url": entry["url"]}
+            )
+    
+    # Sort each category's products by price ascending (cheapest first)
+    for cat in category_products:
+        category_products[cat].sort(key=lambda x: float(x["price"]))
+        
+    return category_products
+
+
+def _remove_duplicates_within_categories(category_products):
+    """Remove duplicate products within each category, keeping the cheapest."""
+    for cat in category_products:
+        # Group by product name and keep the cheapest
+        product_groups = {}
+        for product in category_products[cat]:
+            name = product["name"]
+            if name not in product_groups or float(product["price"]) < float(product_groups[name]["price"]):
+                product_groups[name] = product
+        
+        # Convert back to list, sorted by price
+        category_products[cat] = sorted(product_groups.values(), key=lambda x: float(x["price"]))
+    
+    return category_products
 
 
 def generate_html(product_prices, history):
@@ -332,18 +377,8 @@ def generate_html(product_prices, history):
     )
 
     # Build category_products: category → list of product dicts (sorted by price)
-    from collections import defaultdict
-
-    category_products = defaultdict(list)
-    for name, entries in product_prices.items():
-        for entry in entries:
-            cat = get_category(name, entry["url"])
-            category_products[cat].append(
-                {"name": name, "price": entry["price"], "url": entry["url"]}
-            )
-    # Sort each category's products by price ascending
-    for cat in category_products:
-        category_products[cat].sort(key=lambda x: float(x["price"]))
+    category_products = _build_category_products_with_explicit_categories(product_prices)
+    category_products = _remove_duplicates_within_categories(category_products)
 
     _render_html(
         category_products, history, product_prices, product_min_prices, total_history
