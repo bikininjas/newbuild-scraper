@@ -55,7 +55,7 @@ The goal of this project is to build a Python-based price tracker and HTML repor
 - Enhanced visual product differentiation with warning indicators
 - Improved anti-bot protection and price extraction success rates
 - Successfully tested with 97 products processed and 41 price updates collected
- - Inlined all UI JavaScript and removed obsolete `static/toggleHistory.js` to keep a single, portable `output.html`
+- Inlined all UI JavaScript and removed obsolete `static/toggleHistory.js` to keep a single, portable `output.html`
 
 ## Prompt for Next AI Agent
 
