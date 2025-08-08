@@ -31,6 +31,9 @@ The goal of this project is to build a Python-based price tracker and HTML repor
 - **Upgrade Kit Pricing Issue:** ✅ **RESOLVED** - Excluded "Upgrade Kit" category from total price calculations as they represent alternatives to individual components, not additional costs.
 - **Idealo Cookie Consent:** ✅ **RESOLVED** - Implemented automatic cookie consent handling for Idealo.fr to improve price extraction success rates.
 - **Visual Product Differentiation:** ✅ **RESOLVED** - Added yellow warning boxes to clearly identify upgrade kit/alternative products in the HTML output.
+ - **Centralized Exclusions:** ✅ **RESOLVED** - Centralized excluded categories in `src/htmlgen/constants.py` and reused across rendering and helpers.
+ - **Price Utils Extraction:** ✅ **RESOLVED** - Extracted `compute_summary_total` to `src/htmlgen/price_utils.py` for reuse and easier testing.
+ - **Unit Tests for Totals:** ✅ **RESOLVED** - Added `tests/test_totals.py` to validate exclusion logic and selection handling.
 
 
 ## What's Missing / Next Steps
@@ -40,12 +43,13 @@ The goal of this project is to build a Python-based price tracker and HTML repor
 - **✅ Cookie Consent Handling:** **COMPLETED** - Automatic Idealo.fr cookie consent handling implemented for better price extraction.
 - **✅ Documentation:** **COMPLETED** - README.md and prompt_en.md updated to reflect current UI state, features, and resolved issues.
 - **✅ Code Quality:** **COMPLETED** - Reduced cognitive complexity in main logic functions through refactoring and helper function extraction.
-- **✅ Testing:** **COMPLETED** - Confirmed that all UI changes are reflected in the output and code runs cleanly.
+- **✅ Testing:** **COMPLETED** - Added unit tests for pricing totals and confirmed UI changes are reflected in the output; code runs cleanly.
 
 ## Current Branch Status
 
 **Branch:** `alternative_components`
 **Latest Changes (August 8, 2025):**
+
 - Implemented smart category-based price calculations excluding upgrade kits
 - Added comprehensive Idealo.fr cookie consent handling
 - Enhanced visual product differentiation with warning indicators
@@ -57,6 +61,7 @@ The goal of this project is to build a Python-based price tracker and HTML repor
 You are an AI developer working on the `newbuild-scraper` project. This project is now **feature-complete** with the following major accomplishments:
 
 **✅ COMPLETED FEATURES:**
+
 - ✅ Modern, responsive HTML dashboard with toggleable historical prices
 - ✅ Smart price calculations that exclude alternative/upgrade kit products
 - ✅ Comprehensive cookie consent handling for improved data collection
@@ -65,7 +70,10 @@ You are an AI developer working on the `newbuild-scraper` project. This project 
 - ✅ Automated GitHub Actions workflows for scheduled scraping and deployment
 
 **Recent Major Updates:**
+
 - ✅ Successfully implemented category-based price exclusion logic
+- ✅ Centralized excluded categories and extracted pricing utilities
+- ✅ Added unit tests for total pricing logic (exclusion + selections)
 - ✅ Added automatic cookie consent handling for Idealo.fr
 - ✅ Enhanced visual UX with warning boxes for alternative products
 - ✅ Improved price extraction success rates and data quality
@@ -84,6 +92,7 @@ You are an AI developer working on the `newbuild-scraper` project. This project 
 **newbuild-scraper** is a **fully-functional, production-ready** Python-based price tracking system for PC components. The project successfully scrapes prices from multiple French e-commerce sites, intelligently calculates costs while excluding alternative products, and generates a modern, responsive HTML dashboard with comprehensive price analytics.
 
 **Key Achievements:**
+
 - **Smart Price Logic**: Automatically excludes upgrade kits from total calculations
 - **Robust Data Collection**: Handles anti-bot protection and cookie consent across multiple sites
 - **Modern UI/UX**: Clean, responsive design with toggleable features and visual indicators
