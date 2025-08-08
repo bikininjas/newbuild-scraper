@@ -22,12 +22,24 @@ def normalize_and_filter_prices(entries, name):
 
 def get_category_best(product_prices):
     category_best = {}
+    # Load products data to get explicit categories
+    products_data = load_products("produits.csv")
+    
     for name, entries in product_prices.items():
         valid_entries = normalize_and_filter_prices(entries, name)
         if not valid_entries:
             continue
         best = min(valid_entries, key=lambda x: float(x["price"]))
-        cat = get_category(name, best["url"])
+        
+        # Get explicit category from CSV, fallback to heuristic
+        product_data = products_data.get(name, {})
+        cat = product_data.get("category", get_category(name, best["url"]))
+        
+        # Exclude "Upgrade Kit" from total price calculations
+        if cat == "Upgrade Kit":
+            product_prices[name] = valid_entries
+            continue
+            
         if cat not in category_best or float(best["price"]) < float(
             category_best[cat]["price"]
         ):

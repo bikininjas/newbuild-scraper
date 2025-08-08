@@ -77,15 +77,53 @@ def setup_browser_context(use_stealth):
         }
 
 
+def handle_idealo_cookie_consent(page):
+    """Handle Idealo's cookie consent popup."""
+    try:
+        # Common Idealo cookie consent selectors
+        consent_selectors = [
+            'button[data-testid="acceptAll"]',
+            'button[data-testid="uc-accept-all-button"]',
+            'button:has-text("Accepter")',
+            'button:has-text("Accept")',
+            'button:has-text("Tout accepter")',
+            'button[id*="accept"]',
+            'button[class*="accept"]',
+            '.uc-btn-accept-all',
+            '#usercentrics-root button[data-testid="uc-accept-all-button"]',
+        ]
+        
+        # Wait a bit for the page to load
+        page.wait_for_timeout(2000)
+        
+        # Try to click on cookie consent buttons
+        for selector in consent_selectors:
+            try:
+                if page.locator(selector).is_visible(timeout=3000):
+                    logging.info(f"[IDEALO] Found cookie consent button: {selector}")
+                    page.locator(selector).click(timeout=5000)
+                    page.wait_for_timeout(2000)  # Wait for consent to be processed
+                    logging.info("[IDEALO] Successfully accepted cookie consent")
+                    break
+            except Exception:
+                continue
+                
+    except Exception as e:
+        logging.warning(f"[IDEALO] Cookie consent handling failed: {e}")
+
+
 def handle_site_specific_behavior(page, url):
     """Handle site-specific behavior and waits."""
     is_topachat = is_site_supported(url, "topachat.com")
     is_pccomponentes = is_site_supported(url, "pccomponentes.fr")
+    is_idealo = is_site_supported(url, "idealo.fr")
 
     if is_pccomponentes:
         emulate_pccomponentes_user(page)
     elif is_topachat:
         wait_for_topachat_price(page)
+    elif is_idealo:
+        handle_idealo_cookie_consent(page)
 
     # Wait based on site's anti-bot protection level
     wait_time = get_anti_bot_wait_time(url)
