@@ -759,7 +759,7 @@ def extract_idealo_price_with_vendor(
                 vendor_soup = BeautifulSoup(vendor_content, "html.parser")
 
                 # Try to extract price from vendor's page
-                vendor_price = extract_vendor_page_price(
+                vendor_price, is_marketplace, is_prime = extract_vendor_page_price(
                     vendor_soup, vendor_info["vendor_url"]
                 )
 
@@ -767,41 +767,28 @@ def extract_idealo_price_with_vendor(
                     logger.info(
                         f"[IDEALO] Successfully got price from {vendor_info['vendor_name']}: {vendor_price}"
                     )
-
-                    # Get Amazon marketplace and Prime info if applicable
-                    is_marketplace, is_prime = get_amazon_info()
                     result = {
                         "price": vendor_price,
                         "vendor_name": vendor_info["vendor_name"],
                         "vendor_url": vendor_info["vendor_url"],
                     }
-
                     # Add Amazon-specific info if it's an Amazon vendor
                     if "amazon" in vendor_info.get("vendor_name", "").lower():
                         result["is_marketplace"] = is_marketplace
                         result["is_prime_eligible"] = is_prime
-
-                    # Clear the Amazon info after use
-                    clear_amazon_info()
                     return result
                 else:
                     logger.warning(
                         f"[IDEALO] Could not extract price from {vendor_info['vendor_name']}, using Idealo price"
                     )
-
-                    # Get Amazon info for fallback case too
-                    is_marketplace, is_prime = get_amazon_info()
                     result = {
                         "price": vendor_info.get("vendor_price", ""),
                         "vendor_name": vendor_info["vendor_name"],
                         "vendor_url": vendor_info["vendor_url"],
                     }
-
                     if "amazon" in vendor_info.get("vendor_name", "").lower():
                         result["is_marketplace"] = is_marketplace
                         result["is_prime_eligible"] = is_prime
-
-                    clear_amazon_info()
                     return result
 
         except Exception as e:
@@ -914,7 +901,7 @@ def extract_idealo_price(page: Page, soup: BeautifulSoup, site_selectors: list) 
     return ""
 
 
-def extract_vendor_page_price(soup: BeautifulSoup, vendor_url: str) -> str:
+def extract_vendor_page_price(soup: BeautifulSoup, vendor_url: str) -> tuple[str, bool, bool]:
     """
     Extract price from the actual vendor page with enhanced Amazon support.
     """
@@ -924,7 +911,10 @@ def extract_vendor_page_price(soup: BeautifulSoup, vendor_url: str) -> str:
 
         # Amazon-specific extraction with marketplace and Prime detection
         if "amazon." in domain:
-            return extract_amazon_price_and_info(soup, vendor_url)
+            price, is_marketplace, prime_eligible = extract_amazon_price_and_info(soup)
+            return price, is_marketplace, prime_eligible
+
+        # Use existing generic extraction for other vendors
 
         # Use existing generic extraction for other vendors
         from .config import SITE_SELECTORS, DEFAULT_SELECTORS
@@ -949,24 +939,25 @@ def extract_vendor_page_price(soup: BeautifulSoup, vendor_url: str) -> str:
                         if price_match:
                             price = price_match.group(1)
                             logger.info(f"[IDEALO] Vendor price found: {price}€")
-                            return f"{price}€"
+                            return f"{price}€", False, False
             except Exception as e:
                 logger.debug(f"[IDEALO] Vendor selector {selector} failed: {e}")
                 continue
 
         logger.warning(f"[IDEALO] No price found on vendor page: {domain}")
-        return ""
+        return "", False, False
 
     except Exception as e:
         logger.error(f"[IDEALO] Vendor price extraction failed: {e}")
         return ""
 
 
-def extract_amazon_price_and_info(soup: BeautifulSoup, vendor_url: str) -> str:
+def extract_amazon_price_and_info(soup: BeautifulSoup) -> tuple[str, bool, bool]:
     """
     Extract price from Amazon page with marketplace and Prime detection.
     Returns price string with marketplace and Prime indicators.
     """
+
     try:
         logger.info("[IDEALO] Extracting Amazon price with marketplace/Prime info...")
 
@@ -987,7 +978,6 @@ def extract_amazon_price_and_info(soup: BeautifulSoup, vendor_url: str) -> str:
             price_elem = soup.select_one(selector)
             if price_elem:
                 price_text = price_elem.get_text(strip=True)
-                # Handle different Amazon price formats
                 price_match = re.search(
                     r"(\d+(?:[,\.]\d+)?)",
                     price_text.replace(" ", "").replace("\xa0", ""),
@@ -999,10 +989,10 @@ def extract_amazon_price_and_info(soup: BeautifulSoup, vendor_url: str) -> str:
 
         if not price:
             logger.warning("[IDEALO] No Amazon price found")
-            return ""
+            return "", False, False
 
         # Check if it's sold by Amazon or marketplace
-        marketplace_info = ""
+        is_marketplace = False
         seller_selectors = [
             "#tabular-buybox .a-color-secondary",
             "#merchant-info",
@@ -1011,7 +1001,6 @@ def extract_amazon_price_and_info(soup: BeautifulSoup, vendor_url: str) -> str:
             "#availability .a-color-state",
         ]
 
-        is_marketplace = False
         for selector in seller_selectors:
             seller_elem = soup.select_one(selector)
             if seller_elem:
@@ -1020,7 +1009,6 @@ def extract_amazon_price_and_info(soup: BeautifulSoup, vendor_url: str) -> str:
                     "vendu par" in seller_text or "sold by" in seller_text
                 ) and "amazon" not in seller_text:
                     is_marketplace = True
-                    marketplace_info = " (Marketplace)"
                     logger.info("[IDEALO] Amazon Marketplace seller detected")
                     break
                 elif "amazon" in seller_text:
@@ -1054,43 +1042,14 @@ def extract_amazon_price_and_info(soup: BeautifulSoup, vendor_url: str) -> str:
                 prime_eligible = True
                 logger.info("[IDEALO] Amazon Prime eligible (text detection)")
 
-        # Store the marketplace and Prime info globally for database insertion
-        # We'll use a module-level variable to pass this information
-        global _amazon_marketplace_info, _amazon_prime_info
-        _amazon_marketplace_info = is_marketplace
-        _amazon_prime_info = prime_eligible
-
-        # Format the result with additional info
-        result = f"{price}€"
-        if marketplace_info:
-            result += marketplace_info
-        if prime_eligible:
-            result += " (Prime)"
-
-        logger.info(f"[IDEALO] Amazon final result: {result}")
-        return result
+        logger.info(f"[IDEALO] Amazon final result: {price}€, marketplace={is_marketplace}, prime={prime_eligible}")
+        return f"{price}€", is_marketplace, prime_eligible
 
     except Exception as e:
         logger.error(f"[IDEALO] Error extracting Amazon price: {e}")
-        return ""
+        return "", False, False
 
 
-# Global variables to store Amazon marketplace and Prime info
-_amazon_marketplace_info = False
-_amazon_prime_info = False
-
-
-def get_amazon_info() -> tuple[bool, bool]:
-    """Get the last extracted Amazon marketplace and Prime information."""
-    global _amazon_marketplace_info, _amazon_prime_info
-    return _amazon_marketplace_info, _amazon_prime_info
-
-
-def clear_amazon_info():
-    """Clear the Amazon information cache."""
-    global _amazon_marketplace_info, _amazon_prime_info
-    _amazon_marketplace_info = False
-    _amazon_prime_info = False
 
 
 def handle_idealo_page(page: Page, url: str, db_manager=None) -> bool:
