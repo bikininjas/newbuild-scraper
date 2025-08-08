@@ -39,6 +39,7 @@ import numpy as np
 from .normalize import normalize_price, get_category, get_site_label
 from .constants import EXCLUDED_CATEGORIES
 from .graph import render_price_history_graph, render_price_history_graph_from_series
+from .price_utils import compute_summary_total
 from utils import format_french_date_full
 
 
@@ -66,26 +67,7 @@ def render_component_switch_js():
     </script>"""
 
 
-def compute_summary_total(category_products, selections=None) -> float:
-    """Compute the total price from category_products excluding EXCLUDED_CATEGORIES.
-
-    Inputs:
-    - category_products: dict[str, list[dict{name, price, url}]]
-    - selections: optional dict[category -> product name]
-
-    Returns: float rounded to 2 decimals
-    """
-    selections = selections or {}
-    total = 0.0
-    for cat, products in category_products.items():
-        if not products:
-            continue
-        selected_name = selections.get(cat) if selections else products[0]["name"]
-        selected = next((p for p in products if p["name"] == selected_name), products[0])
-        price = float(selected["price"])
-        if cat not in EXCLUDED_CATEGORIES:
-            total += price
-    return round(total, 2)
+## compute_summary_total moved to htmlgen.price_utils
 
 
 def render_summary_table(

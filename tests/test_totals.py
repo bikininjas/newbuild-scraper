@@ -8,7 +8,7 @@ SRC = os.path.join(ROOT, 'src')
 if SRC not in sys.path:
     sys.path.insert(0, SRC)
 
-from htmlgen.render import compute_summary_total
+from htmlgen.price_utils import compute_summary_total
 
 
 class TestTotals(unittest.TestCase):
