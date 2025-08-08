@@ -186,37 +186,38 @@ def render_summary_table(
 
 def render_product_cards(product_prices, history, product_min_prices):
     from .data import load_products
+
     DIV_END = "</div>"
     html = []
     html.append('<div class="grid gap-8">')
-    
+
     # Load products data to get categories
     products_data = load_products("produits.csv")
-    
+
     for name, entries in product_prices.items():
         # Get category for this product
         product_data = products_data.get(name, {})
         category = product_data.get("category", "Other")
-        
+
         min_price_data = product_min_prices.get(name, {"timestamps": [], "prices": []})
         best = min(entries, key=lambda x: float(x["price"]))
         history_id = f"history-{abs(hash(name))}"
         html.append(
             '<div class="glass-card rounded-2xl shadow-2xl border border-slate-600 p-8 hover:shadow-cyan-500/10 transition-all duration-300">'
         )
-        
+
         # Add special styling for Upgrade Kit items
         if category == "Upgrade Kit":
             html.append(
                 '<div class="bg-yellow-900/20 border border-yellow-500/30 rounded-lg p-4 mb-4">'
                 '<div class="flex items-center gap-2 text-yellow-400 font-semibold mb-2">'
-                '⚠️ Kit d\'Upgrade - Alternative</div>'
+                "⚠️ Kit d'Upgrade - Alternative</div>"
                 '<div class="text-sm text-yellow-200/80">'
-                'Ce kit est une alternative à l\'achat des composants individuels. '
-                'Il n\'est pas inclus dans le calcul du prix total.'
-                '</div></div>'
+                "Ce kit est une alternative à l'achat des composants individuels. "
+                "Il n'est pas inclus dans le calcul du prix total."
+                "</div></div>"
             )
-        
+
         html.append(
             f'<h2 class="text-2xl font-bold text-cyan-400 mb-4 flex items-center gap-2">🔥 {name}</h2>'
         )
