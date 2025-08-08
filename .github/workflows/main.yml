@@ -10,7 +10,7 @@ on:
 
 
 jobs:
-  scrape:
+  lint_test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -25,6 +25,19 @@ jobs:
         run: black --check .
       - name: Run unit tests
         run: pytest -q
+  scrape:
+    if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+    needs: lint_test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: pip install -r requirements.txt
       - name: Install Playwright
         run: |
           pip install playwright black
