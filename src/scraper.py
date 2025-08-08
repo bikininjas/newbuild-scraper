@@ -31,7 +31,7 @@ from antibot.detection import (
 )
 
 
-def get_price_requests(url, site_selectors):
+def get_price_requests(url, site_selectors, db_manager=None):
     """Get price using requests (faster but less reliable for protected sites)."""
     headers = {"User-Agent": get_user_agent()}
 
@@ -44,19 +44,53 @@ def get_price_requests(url, site_selectors):
         logging.info(f"Fetched {url} with requests, status {resp.status_code}")
         if resp.status_code != 200:
             logging.warning(f"Non-200 status code for {url}: {resp.status_code}")
+
+            # Log HTTP errors to database if available
+            if db_manager and resp.status_code in [404, 403, 500, 503]:
+                product = db_manager.get_product_by_url(url)
+                if product:
+                    error_type = (
+                        "404_error" if resp.status_code == 404 else "scrape_error"
+                    )
+                    db_manager.log_product_issue(
+                        product_id=product.id,
+                        url=url,
+                        issue_type=error_type,
+                        error_message=f"HTTP {resp.status_code}",
+                        http_status_code=resp.status_code,
+                    )
+
+                    # Automatically handle critical issues
+                    if resp.status_code == 404:
+                        db_manager.remove_product_completely(product.id, "404 error")
+                        logging.warning(
+                            f"Removed product due to 404 error: {product.name}"
+                        )
+
             return None
         soup = BeautifulSoup(resp.text, "html.parser")
 
         # Use site-specific price extraction
-        price = extract_price_for_site(soup, url, site_selectors, "requests")
-        if price:
-            return price
+        price_info = extract_price_for_site(soup, url, site_selectors, "requests")
+        if price_info and price_info.get("price"):
+            return price_info
 
         logging.warning(
             f"No price found for {url} with selectors {site_selectors} (requests)"
         )
     except Exception as e:
         logging.error(f"Requests error for {url}: {e}")
+
+        # Log general scraping errors to database if available
+        if db_manager:
+            product = db_manager.get_product_by_url(url)
+            if product:
+                db_manager.log_product_issue(
+                    product_id=product.id,
+                    url=url,
+                    issue_type="scrape_error",
+                    error_message=str(e),
+                )
     return None
 
 
@@ -76,10 +110,10 @@ def setup_browser_context(use_stealth):
         }
 
 
-def handle_site_specific_behavior(page, url):
+def handle_site_specific_behavior(page, url, db_manager=None):
     """Handle site-specific behavior and waits."""
     # Use the generic handler
-    if not handle_site_specific_page_setup(page, url):
+    if not handle_site_specific_page_setup(page, url, db_manager):
         # Page validation failed, skip processing
         return None
 
@@ -112,7 +146,7 @@ def should_use_headless_mode(is_linux, url, use_stealth):
     )
 
 
-def get_price_playwright(url, site_selectors):
+def get_price_playwright(url, site_selectors, db_manager=None):
     """Get price using Playwright (more reliable for protected sites)."""
     # Clean URLs based on site-specific requirements
     original_url = url
@@ -146,19 +180,21 @@ def get_price_playwright(url, site_selectors):
             page.goto(url, timeout=45000, wait_until=wait_until)
 
             # Handle site-specific behavior
-            handle_site_specific_behavior(page, url)
+            handle_site_specific_behavior(page, url, db_manager)
 
             # Process page content and handle anti-bot protection
             content = process_page_content(page)
 
             # Parse content and extract price using site-specific logic
             soup = BeautifulSoup(content, "html.parser")
-            price = extract_price_for_site(soup, url, site_selectors, "Playwright")
+            price_info = extract_price_for_site(
+                soup, url, site_selectors, "Playwright", page
+            )
 
             browser.close()
 
-            if price:
-                return price
+            if price_info and price_info.get("price"):
+                return price_info
 
             logging.warning(
                 f"No price found for {url} with selectors {site_selectors} (Playwright). HTML snippet: {content[:500]}"
@@ -167,6 +203,17 @@ def get_price_playwright(url, site_selectors):
             # Log if anti-bot was detected
             if detect_anti_bot_protection(content):
                 logging.warning(f"Possible anti-bot detected for {url} (Playwright)")
+
+                # Log anti-bot detection to database if available
+                if db_manager:
+                    product = db_manager.get_product_by_url(url)
+                    if product:
+                        db_manager.log_product_issue(
+                            product_id=product.id,
+                            url=url,
+                            issue_type="anti_bot",
+                            error_message="Anti-bot protection detected",
+                        )
 
     except Exception as e:
         logging.error(f"Playwright error for {url}: {e}")

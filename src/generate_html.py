@@ -3,11 +3,24 @@ from htmlgen.normalize import normalize_price, get_category, get_site_label
 from htmlgen.render import render_summary_table, render_product_cards
 from htmlgen.graph import render_all_price_graphs
 from utils import format_french_date
+from database import DatabaseManager, DatabaseConfig
+from pathlib import Path
 import os
 import json
 
 
 PRODUCTS_CSV = "produits.csv"
+
+
+def get_database_manager():
+    """Get database manager instance based on configuration."""
+    config_path = "database.conf"
+    if Path(config_path).exists():
+        db_config = DatabaseConfig.from_config_file(config_path)
+    else:
+        db_config = DatabaseConfig.from_env()
+
+    return DatabaseManager(db_config), db_config
 
 
 def normalize_and_filter_prices(entries, name):
@@ -25,8 +38,24 @@ def normalize_and_filter_prices(entries, name):
 
 def get_category_best(product_prices):
     category_best = {}
-    # Load products data to get explicit categories
-    products_data = load_products(PRODUCTS_CSV)
+
+    # Try to get products from database first, fallback to CSV
+    try:
+        db_manager, db_config = get_database_manager()
+        if db_config.database_type == "sqlite":
+            products_list = db_manager.get_products()
+            products_data = {}
+            for product in products_list:
+                urls = db_manager.get_product_urls(product.name)
+                products_data[product.name] = {
+                    "category": product.category,
+                    "urls": [url.url for url in urls],
+                }
+        else:
+            products_data = load_products(PRODUCTS_CSV)
+    except Exception:
+        # Fallback to CSV
+        products_data = load_products(PRODUCTS_CSV)
 
     for name, entries in product_prices.items():
         valid_entries = normalize_and_filter_prices(entries, name)
