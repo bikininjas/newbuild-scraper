@@ -177,7 +177,7 @@ def _get_product_graph_datasets(product_min_prices, total_history):
 
 
 def _render_html(
-    category_best, history, product_prices, product_min_prices, total_history
+    category_products, history, product_prices, product_min_prices, total_history
 ):
     formatted_labels = _get_formatted_labels(total_history)
     product_graph_datasets = _get_product_graph_datasets(
@@ -270,7 +270,7 @@ def _render_html(
         f"new Chart(ctx, {chart_json});\n"
         f"</script></div>",
     ]
-    html.append(render_summary_table(category_best, history))
+    html.append(render_summary_table(category_products, history))
     # Call render_product_cards - historical prices are now toggleable with buttons
     html.append(render_product_cards(product_prices, history, product_min_prices))
 

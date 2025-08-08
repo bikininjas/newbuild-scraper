@@ -6,6 +6,7 @@ import sys
 import os
 import math
 import json
+import html
 import pandas as pd
 import numpy as np
 from .normalize import normalize_price, get_category, get_site_label
@@ -147,18 +148,19 @@ def _render_select_for_products(cat: str, products: list, selected_name: str) ->
             if isinstance(p["price"], (int, float, str))
             else p["price"]
         )
-        url = p["url"]
+        # HTML escape user data to prevent XSS
+        escaped_name = html.escape(str(p["name"]))
+        escaped_url = html.escape(str(p["url"]))
         date = p.get("best_seen", "?")
-        site = p.get("site_label", get_site_label(url))
+        site = p.get("site_label", get_site_label(p["url"]))
+        escaped_site = html.escape(str(site))
+
         options.append(
-            f'<option value="{p["name"]}" data-price="{price}" data-url="{url}" data-date="{date}" data-site="{site}"{sel}>{p["name"]}</option>'
+            f'<option value="{escaped_name}" data-price="{price}" data-url="{escaped_url}" data-date="{date}" data-site="{escaped_site}"{sel}>{escaped_name}</option>'
         )
+    escaped_cat = html.escape(str(cat))
     return (
-        '<select data-category="'
-        + cat
-        + '" onchange="switchComponent(\''
-        + cat
-        + "', this)\">"
+        f'<select data-category="{escaped_cat}" onchange="switchComponent(\'{escaped_cat}\', this)">'
         + "".join(options)
         + "</select>"
     )

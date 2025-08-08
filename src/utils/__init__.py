@@ -1,5 +1,6 @@
 # Utils package
 import logging
+import re
 import requests
 from fake_useragent import UserAgent
 from datetime import datetime
@@ -81,7 +82,6 @@ def clean_price(raw):
 
     # Check if this looks like French format without decimal (e.g., "57995" from "579€95")
     # This happens when <sup> tags are flattened to text
-    import re
 
     # If it's a number with 3-6 digits ending in two digits that could be cents
     # Only apply this fix for reasonable price ranges (avoid breaking large legitimate prices)

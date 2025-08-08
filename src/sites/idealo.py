@@ -74,20 +74,29 @@ def extract_product_name_from_page(page: Page) -> str:
     # Strategy 1: JSON-LD structured data (most reliable)
     try:
         json_scripts = page.locator('script[type="application/ld+json"]').all()
+
+        def is_valid_product_jsonld(obj):
+            """Validate that JSON-LD object is a trusted Product schema."""
+            return (
+                isinstance(obj, dict)
+                and obj.get("@context") in ["https://schema.org", "http://schema.org"]
+                and obj.get("@type") == "Product"
+            )
+
         for script in json_scripts:
             try:
                 script_content = script.text_content()
                 if script_content:
                     data = json.loads(script_content)
-                    # Look for product name in JSON-LD
-                    if isinstance(data, dict):
+                    # Look for product name in validated JSON-LD
+                    if isinstance(data, dict) and is_valid_product_jsonld(data):
                         name = data.get("name") or data.get("@name")
                         if name and len(name.strip()) > 5:
                             product_name = name.strip()
                             break
                     elif isinstance(data, list):
                         for item in data:
-                            if isinstance(item, dict):
+                            if isinstance(item, dict) and is_valid_product_jsonld(item):
                                 name = item.get("name") or item.get("@name")
                                 if name and len(name.strip()) > 5:
                                     product_name = name.strip()
@@ -148,7 +157,7 @@ def check_product_mismatch(page: Page, original_url: str) -> bool:
     # Extract actual product name from page
     actual_product_name = extract_product_name_from_page(page)
     if not actual_product_name:
-        logger.warning(f"[IDEALO] Could not extract product name from page")
+        logger.warning("[IDEALO] Could not extract product name from page")
         return False
 
     logger.info(f"[IDEALO] Product name found on page: {actual_product_name}")
@@ -158,14 +167,16 @@ def check_product_mismatch(page: Page, original_url: str) -> bool:
     brand_found = expected_brand.lower() in actual_product_name.lower()
 
     if not brand_found:
-        logger.warning(f"[IDEALO] Product brand mismatch detected!")
+        logger.warning("[IDEALO] Product brand mismatch detected!")
         logger.warning(f"[IDEALO] Expected: {expected_brand} product (from URL)")
         logger.warning(f"[IDEALO] Actual product: {actual_product_name}")
 
-        # Log critical error and recommendation
-        logger.error(f"[IDEALO] CRITICAL: URL {original_url} serves wrong product!")
+        # Log critical error with actionable guidance
         logger.error(
-            f"[IDEALO] This URL should be removed or corrected in produits.csv"
+            f"[IDEALO] CRITICAL: Product mismatch detected for URL: {original_url}\n"
+            f"  Expected brand: {expected_brand} (from URL)\n"
+            f"  Actual product name: {actual_product_name}\n"
+            f"  ACTION: Please update or remove this URL from produits.csv."
         )
 
         return True
@@ -181,14 +192,14 @@ def check_product_mismatch(page: Page, original_url: str) -> bool:
         )
 
         if not model_found:
-            logger.warning(f"[IDEALO] Product model mismatch detected!")
+            logger.warning("[IDEALO] Product model mismatch detected!")
             logger.warning(f"[IDEALO] Expected keywords: {model_keywords} (from URL)")
             logger.warning(f"[IDEALO] Actual product: {actual_product_name}")
 
             # Log critical error and recommendation
             logger.error(f"[IDEALO] CRITICAL: URL {original_url} serves wrong product!")
             logger.error(
-                f"[IDEALO] This URL should be removed or corrected in produits.csv"
+                "[IDEALO] This URL should be removed or corrected in produits.csv"
             )
 
             return True
@@ -218,13 +229,13 @@ def handle_cookie_consent(page: Page):
                     logger.info(f"[IDEALO] Found cookie consent button: {selector}")
                     consent_button.click()
                     page.wait_for_timeout(2000)  # Wait for consent to process
-                    logger.info(f"[IDEALO] Successfully accepted cookie consent")
+                    logger.info("[IDEALO] Successfully accepted cookie consent")
                     return
             except Exception as e:
                 logger.debug(f"[IDEALO] Consent selector {selector} failed: {e}")
                 continue
 
-        logger.debug(f"[IDEALO] No cookie consent dialog found")
+        logger.debug("[IDEALO] No cookie consent dialog found")
 
     except Exception as e:
         logger.warning(f"[IDEALO] Cookie consent handling failed: {e}")
