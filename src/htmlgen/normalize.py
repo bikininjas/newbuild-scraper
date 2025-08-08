@@ -36,12 +36,28 @@ def get_category(name, url):
         return "Cooler"
     if any(
         x in name_l
-        for x in ["cpu", "ryzen", "intel", "amd processor", "processeur", "9800x3d", "9800 x3d"]
+        for x in [
+            "cpu",
+            "ryzen",
+            "intel",
+            "amd processor",
+            "processeur",
+            "9800x3d",
+            "9800 x3d",
+        ]
     ):
         return "CPU"
     if any(
         x in name_l
-        for x in ["radeon", "geforce", "rtx", "gpu", "graphics", "carte graphique", "pulse radeon"]
+        for x in [
+            "radeon",
+            "geforce",
+            "rtx",
+            "gpu",
+            "graphics",
+            "carte graphique",
+            "pulse radeon",
+        ]
     ):
         return "GPU"
     if any(x in name_l for x in ["ram", "ddr", "memory", "mémoire"]):

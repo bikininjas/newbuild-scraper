@@ -1,7 +1,10 @@
 """PCComponentes specific scraping logic."""
 
 import logging
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, Error as PlaywrightError
+from playwright.sync_api import (
+    TimeoutError as PlaywrightTimeoutError,
+    Error as PlaywrightError,
+)
 
 
 # Mouse movement coordinates for anti-bot detection

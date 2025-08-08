@@ -354,7 +354,10 @@ def main():
         help="Maximum age in hours for --new-products-only (default: 48)",
     )
     parser.add_argument(
-        "--config", type=str, default="database.conf", help="Path to database configuration file"
+        "--config",
+        type=str,
+        default="database.conf",
+        help="Path to database configuration file",
     )
     args = parser.parse_args()
 

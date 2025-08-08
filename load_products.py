@@ -75,7 +75,8 @@ class ProductLoader:
 
                             # Get product ID
                             product_result = conn.execute(
-                                "SELECT id FROM products WHERE name = ?", (product_name,)
+                                "SELECT id FROM products WHERE name = ?",
+                                (product_name,),
                             ).fetchone()
 
                             if product_result:

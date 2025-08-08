@@ -20,9 +20,17 @@ def get_price_evolution_indicator(prices, color_scheme="slate"):
     color_scheme: 'slate' (for charts) or 'gray' (for tables).
     """
     if color_scheme == "slate":
-        colors = {"no_change": "text-slate-400", "down": "text-green-400", "up": "text-red-400"}
+        colors = {
+            "no_change": "text-slate-400",
+            "down": "text-green-400",
+            "up": "text-red-400",
+        }
     else:  # gray scheme
-        colors = {"no_change": "text-gray-400", "down": "text-green-600", "up": "text-red-600"}
+        colors = {
+            "no_change": "text-gray-400",
+            "down": "text-green-600",
+            "up": "text-red-600",
+        }
 
     if len(prices) < 2 or prices[-1] is None or prices[-2] is None:
         return (
@@ -98,7 +106,10 @@ def render_price_history_graph_from_series(timestamps, prices, product_name):
         "options": {
             "responsive": True,
             "plugins": {
-                "legend": {"display": True, "labels": {"color": "#e2e8f0", "font": {"size": 11}}},
+                "legend": {
+                    "display": True,
+                    "labels": {"color": "#e2e8f0", "font": {"size": 11}},
+                },
                 "title": {
                     "display": True,
                     "text": f"Historique - {product_name}",

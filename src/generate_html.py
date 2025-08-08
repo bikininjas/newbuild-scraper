@@ -73,7 +73,11 @@ def get_category_best(product_prices):
             continue
 
         if cat not in category_best or float(best["price"]) < float(category_best[cat]["price"]):
-            category_best[cat] = {"name": name, "price": best["price"], "url": best["url"]}
+            category_best[cat] = {
+                "name": name,
+                "price": best["price"],
+                "url": best["url"],
+            }
         product_prices[name] = valid_entries
     return category_best, product_prices
 
@@ -200,7 +204,10 @@ def _render_html(category_products, history, product_prices, product_min_prices,
         "options": {
             "responsive": True,
             "plugins": {
-                "legend": {"display": True, "labels": {"color": "#e2e8f0", "font": {"size": 12}}},
+                "legend": {
+                    "display": True,
+                    "labels": {"color": "#e2e8f0", "font": {"size": 12}},
+                },
                 "title": {
                     "display": True,
                     "text": "Historique du prix total",

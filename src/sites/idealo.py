@@ -938,7 +938,8 @@ def extract_amazon_price_and_info(soup: BeautifulSoup) -> tuple[str, bool, bool]
             if price_elem:
                 price_text = price_elem.get_text(strip=True)
                 price_match = re.search(
-                    r"(\d+(?:[,\.]\d+)?)", price_text.replace(" ", "").replace("\xa0", "")
+                    r"(\d+(?:[,\.]\d+)?)",
+                    price_text.replace(" ", "").replace("\xa0", ""),
                 )
                 if price_match:
                     price = price_match.group(1).replace(",", ".")

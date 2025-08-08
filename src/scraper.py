@@ -80,7 +80,10 @@ def get_price_requests(url, site_selectors, db_manager=None):
             product = db_manager.get_product_by_url(url)
             if product:
                 db_manager.log_product_issue(
-                    product_id=product.id, url=url, issue_type="scrape_error", error_message=str(e)
+                    product_id=product.id,
+                    url=url,
+                    issue_type="scrape_error",
+                    error_message=str(e),
                 )
     return None
 

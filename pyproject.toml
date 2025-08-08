@@ -1,0 +1,17 @@
+[tool.black]
+line-length = 100
+# Match our Python version and avoid surprises
+target-version = ["py312"]
+include = '\.pyi?$'
+exclude = '''
+(
+  /\.git
+| /\.venv
+| /data
+| /build
+| /dist
+)
+'''
+
+[tool.pytest.ini_options]
+addopts = "-q"

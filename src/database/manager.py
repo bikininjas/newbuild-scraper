@@ -172,7 +172,13 @@ class DatabaseManager:
                     """INSERT OR IGNORE INTO price_history 
                        (product_id, url, price, scraped_at, site_name) 
                        VALUES (?, ?, ?, ?, ?)""",
-                    (product_id, row["URL"], float(row["Price"]), scraped_at, site_name),
+                    (
+                        product_id,
+                        row["URL"],
+                        float(row["Price"]),
+                        scraped_at,
+                        site_name,
+                    ),
                 )
                 migrated_count += 1
 
@@ -650,7 +656,11 @@ class DatabaseManager:
 
             for row in rows:
                 products.append(
-                    {"URL": row["url"], "Product_Name": row["name"], "Category": row["category"]}
+                    {
+                        "URL": row["url"],
+                        "Product_Name": row["name"],
+                        "Category": row["category"],
+                    }
                 )
 
         # Save products CSV
@@ -798,7 +808,8 @@ class DatabaseManager:
 
                 # Mark related issues as resolved
                 conn.execute(
-                    "UPDATE product_issues SET resolved = 1 WHERE product_id = ?", (product_id,)
+                    "UPDATE product_issues SET resolved = 1 WHERE product_id = ?",
+                    (product_id,),
                 )
 
                 # Explicit commit to ensure changes are saved
