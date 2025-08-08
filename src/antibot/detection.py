@@ -36,6 +36,7 @@ def get_anti_bot_wait_time(url):
     wait_times = {
         "pccomponentes.fr": 15000,  # 15 seconds
         "bpm-power.com": 12000,  # 12 seconds
+        "topachat.com": 10000,  # 10 seconds for anti-bot protection
         "idealo.fr": 8000,  # 8 seconds
         "grosbill.com": 5000,  # 5 seconds
     }

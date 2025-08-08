@@ -60,5 +60,5 @@ def add_stealth_scripts(page):
 
 def should_use_stealth_mode(url):
     """Determine if stealth mode should be used for a URL."""
-    stealth_sites = ["pccomponentes.fr", "bpm-power.com", "idealo.fr"]
+    stealth_sites = ["pccomponentes.fr", "bpm-power.com", "idealo.fr", "topachat.com"]
     return any(site in url for site in stealth_sites)

@@ -6,11 +6,25 @@ from utils import clean_price
 
 
 def wait_for_topachat_price(page):
-    """Wait for TopAchat price elements to load."""
-    try:
-        page.wait_for_selector(".offer-price__price", timeout=10000)
-    except Exception:
-        logging.warning("[Playwright] .offer-price__price not found after wait")
+    """Wait for TopAchat price elements to load with multiple attempts."""
+    selectors_to_try = [
+        ".offer-price__price.svelte-hgy1uf",
+        ".offer-price__price",
+        "span.offer-price__price",
+        ".price",
+        "[data-price]",
+        ".product-price",
+    ]
+
+    for selector in selectors_to_try:
+        try:
+            page.wait_for_selector(selector, timeout=8000)
+            logging.info(f"[Playwright] TopAchat price selector found: {selector}")
+            return
+        except Exception:
+            continue
+
+    logging.warning("[Playwright] No TopAchat price selectors found after wait")
 
 
 def extract_topachat_price(elem):
