@@ -1,3 +1,4 @@
+# Utils package
 import logging
 import requests
 from fake_useragent import UserAgent
@@ -73,7 +74,26 @@ def get_user_agent():
 def clean_price(raw):
     if raw is None:
         return None
-    price = raw.replace("€", "").replace(",", ".").replace(" ", "").strip()
+
+    # Handle French format with superscript cents (e.g., "579€95" -> "579.95")
+    # First, remove € symbol and spaces
+    price = raw.replace("€", "").replace(" ", "").strip()
+
+    # Check if this looks like French format without decimal (e.g., "57995" from "579€95")
+    # This happens when <sup> tags are flattened to text
+    import re
+
+    # If it's a number with 3-6 digits ending in two digits that could be cents
+    # Only apply this fix for reasonable price ranges (avoid breaking large legitimate prices)
+    if re.match(r"^\d{3,6}$", price) and len(price) >= 3 and len(price) <= 6:
+        # Check if this could be a French format by seeing if it contains the euro symbol in original
+        if "€" in raw and "." not in raw and "," not in raw:
+            # Insert decimal point before last 2 digits for French format
+            price = price[:-2] + "." + price[-2:]
+
+    # Handle comma as decimal separator (French format)
+    price = price.replace(",", ".")
+
     try:
         return float(price)
     except (ValueError, TypeError):

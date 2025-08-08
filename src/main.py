@@ -3,8 +3,10 @@ import pandas as pd
 from datetime import datetime
 import time
 import logging
-from utils import setup_logging
-from scraper import get_site_selector, get_price_requests, get_price_playwright
+import argparse
+from utils import setup_logging  # From utils package
+from scraper import get_price_requests, get_price_playwright
+from sites.config import get_site_selector
 from alerts import send_discord_alert
 from generate_html import generate_html
 

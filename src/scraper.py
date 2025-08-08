@@ -12,45 +12,31 @@ from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
 from sites.config import SITE_SELECTORS, DEFAULT_SELECTORS, is_site_supported
-from sites.topachat import wait_for_topachat_price, extract_topachat_price
-from sites.pccomponentes import emulate_pccomponentes_user
+from sites.handler import (
+    clean_url_for_site,
+    handle_site_specific_page_setup,
+    extract_price_for_site,
+)
 from utils import clean_price, get_user_agent
 from antibot.stealth import (
     get_stealth_context_options,
     get_stealth_browser_args,
     add_stealth_scripts,
+    should_use_stealth_mode,
 )
 from antibot.detection import (
     detect_anti_bot_protection,
-    should_use_stealth_mode,
     handle_cloudflare_protection,
     get_anti_bot_wait_time,
 )
-
-# Constants
-AMAZON_DOMAIN = "amazon."
-WISHLIST_COLIID = "coliid="
-WISHLIST_COLID = "colid="
-
-
-def clean_amazon_url(url):
-    """Clean Amazon URLs by removing wishlist parameters that can cause issues."""
-    if AMAZON_DOMAIN in url and (WISHLIST_COLIID in url or WISHLIST_COLID in url):
-        # Extract the core product URL
-        if "/dp/" in url:
-            dp_part = url.split("/dp/")[1].split("/")[0].split("?")[0]
-            clean_url = url.split("/dp/")[0] + f"/dp/{dp_part}/"
-            logging.info(f"Cleaned Amazon wishlist URL: {url} -> {clean_url}")
-            return clean_url
-    return url
 
 
 def get_price_requests(url, site_selectors):
     """Get price using requests (faster but less reliable for protected sites)."""
     headers = {"User-Agent": get_user_agent()}
 
-    # Clean Amazon URLs - remove wishlist parameters that can cause issues
-    url = clean_amazon_url(url)
+    # Clean URLs based on site-specific requirements
+    url = clean_url_for_site(url)
 
     time.sleep(random.uniform(2, 5))
     try:
@@ -61,48 +47,16 @@ def get_price_requests(url, site_selectors):
             return None
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # Special debugging for Amazon
-        is_amazon = AMAZON_DOMAIN in url
-        if is_amazon:
-            logging.info(
-                f"Amazon page title: {soup.title.string if soup.title else 'No title'}"
-            )
-
-        for selector in site_selectors:
-            price_elem = soup.select_one(selector)
-            if price_elem:
-                price_text = price_elem.get_text()
-                if is_amazon:
-                    logging.info(
-                        f"Found Amazon price with selector '{selector}': '{price_text}'"
-                    )
-                return clean_price(price_text)
-
-        # Additional debugging for Amazon - show what price elements are available
-        if is_amazon:
-            all_price_elems = soup.select("[class*='price'], [id*='price']")
-            logging.info(
-                f"Amazon price elements found: {[elem.get('class', []) + [elem.get('id', '')] for elem in all_price_elems[:5]]}"
-            )
+        # Use site-specific price extraction
+        price = extract_price_for_site(soup, url, site_selectors, "requests")
+        if price:
+            return price
 
         logging.warning(
             f"No price found for {url} with selectors {site_selectors} (requests)"
         )
     except Exception as e:
         logging.error(f"Requests error for {url}: {e}")
-    return None
-
-
-def extract_price_from_elems(price_elems, is_topachat):
-    """Extract price from found elements."""
-    for elem in price_elems:
-        if is_topachat:
-            price = extract_topachat_price(elem)
-        else:
-            text = elem.get_text(strip=True)
-            price = clean_price(text)
-        if price:
-            return price
     return None
 
 
@@ -122,53 +76,12 @@ def setup_browser_context(use_stealth):
         }
 
 
-def handle_idealo_cookie_consent(page):
-    """Handle Idealo's cookie consent popup."""
-    try:
-        # Common Idealo cookie consent selectors
-        consent_selectors = [
-            'button[data-testid="acceptAll"]',
-            'button[data-testid="uc-accept-all-button"]',
-            'button:has-text("Accepter")',
-            'button:has-text("Accept")',
-            'button:has-text("Tout accepter")',
-            'button[id*="accept"]',
-            'button[class*="accept"]',
-            ".uc-btn-accept-all",
-            '#usercentrics-root button[data-testid="uc-accept-all-button"]',
-        ]
-
-        # Wait a bit for the page to load
-        page.wait_for_timeout(2000)
-
-        # Try to click on cookie consent buttons
-        for selector in consent_selectors:
-            try:
-                if page.locator(selector).is_visible(timeout=3000):
-                    logging.info(f"[IDEALO] Found cookie consent button: {selector}")
-                    page.locator(selector).click(timeout=5000)
-                    page.wait_for_timeout(2000)  # Wait for consent to be processed
-                    logging.info("[IDEALO] Successfully accepted cookie consent")
-                    break
-            except Exception:
-                continue
-
-    except Exception as e:
-        logging.warning(f"[IDEALO] Cookie consent handling failed: {e}")
-
-
 def handle_site_specific_behavior(page, url):
     """Handle site-specific behavior and waits."""
-    is_topachat = is_site_supported(url, "topachat.com")
-    is_pccomponentes = is_site_supported(url, "pccomponentes.fr")
-    is_idealo = is_site_supported(url, "idealo.fr")
-
-    if is_pccomponentes:
-        emulate_pccomponentes_user(page)
-    elif is_topachat:
-        wait_for_topachat_price(page)
-    elif is_idealo:
-        handle_idealo_cookie_consent(page)
+    # Use the generic handler
+    if not handle_site_specific_page_setup(page, url):
+        # Page validation failed, skip processing
+        return None
 
     # Wait based on site's anti-bot protection level
     wait_time = get_anti_bot_wait_time(url)
@@ -180,7 +93,7 @@ def process_page_content(page):
     content = page.content()
     if detect_anti_bot_protection(content) and "cloudflare" in content.lower():
         handle_cloudflare_protection(page)
-        content = page.content()  # Get updated content
+        # Get updated content
     return content
 
 
@@ -201,15 +114,12 @@ def should_use_headless_mode(is_linux, url, use_stealth):
 
 def get_price_playwright(url, site_selectors):
     """Get price using Playwright (more reliable for protected sites)."""
-    # Clean Amazon URLs - remove wishlist parameters that can cause issues
+    # Clean URLs based on site-specific requirements
     original_url = url
-    url = clean_amazon_url(url)
+    url = clean_url_for_site(url)
     if url != original_url:
-        logging.info(
-            f"Cleaned Amazon wishlist URL for Playwright: {original_url} -> {url}"
-        )
+        logging.info(f"Cleaned URL for Playwright: {original_url} -> {url}")
 
-    is_topachat = is_site_supported(url, "topachat.com")
     use_stealth = should_use_stealth_mode(url)
 
     try:
@@ -241,36 +151,15 @@ def get_price_playwright(url, site_selectors):
             # Process page content and handle anti-bot protection
             content = process_page_content(page)
 
-            # Parse content and extract price
+            # Parse content and extract price using site-specific logic
             soup = BeautifulSoup(content, "html.parser")
-
-            # Special debugging for Amazon
-            is_amazon = AMAZON_DOMAIN in url
-            if is_amazon:
-                logging.info(
-                    f"Amazon page title (Playwright): {soup.title.string if soup.title else 'No title'}"
-                )
-
-            for selector in site_selectors:
-                price_elems = soup.select(selector)
-                if price_elems:
-                    price = extract_price_from_elems(price_elems, is_topachat)
-                    if price is not None:
-                        if is_amazon:
-                            logging.info(
-                                f"Found Amazon price with Playwright selector '{selector}': '{price}'"
-                            )
-                        browser.close()
-                        return price
-
-            # Additional debugging for Amazon - show what price elements are available
-            if is_amazon:
-                all_price_elems = soup.select("[class*='price'], [id*='price']")
-                logging.info(
-                    f"Amazon price elements found (Playwright): {[elem.get('class', []) + [elem.get('id', '')] for elem in all_price_elems[:5]]}"
-                )
+            price = extract_price_for_site(soup, url, site_selectors, "Playwright")
 
             browser.close()
+
+            if price:
+                return price
+
             logging.warning(
                 f"No price found for {url} with selectors {site_selectors} (Playwright). HTML snippet: {content[:500]}"
             )

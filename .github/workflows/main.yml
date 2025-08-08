@@ -26,6 +26,7 @@ jobs:
       - name: Run unit tests
         run: pytest -q
   scrape:
+    timeout-minutes: 120
     if: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/alternative_components') }}
     needs: lint_test
     runs-on: ubuntu-latest
