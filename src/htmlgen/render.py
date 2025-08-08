@@ -1,33 +1,4 @@
 """
-Product Recommendations (for easier user integration):
-
-Mouse:
-    - Logitech G G502 X LIGHTSPEED
-    - Razer DeathAdder V3 Pro
-    - Corsair M65 RGB Ultra
-
-Keyboard:
-    - Corsair K70 CORE RGB
-    - Logitech G Pro X
-    - Keychron K8 Pro
-
-Power Supply:
-    - MSI MAG A850GL PCIE5 850W
-    - Corsair RM850x Shift
-    - Seasonic Focus GX-850
-
-Memory (DDR5):
-    - Patriot Viper Venom RGB DDR5 64 Go (2x32 Go) 6000MT/s CL30
-    - Kingston Fury Beast DDR5 64 Go (2x32 Go) 6000MT/s CL30
-    - Corsair Vengeance DDR5 64 Go (2x32 Go) 6000MT/s CL30
-
-NVMe PCIe 5 SSD:
-    - Crucial P510 SSD 1To PCIe 5.0 x4 Gen5 NVMe M.2
-    - Samsung 990 Pro PCIe 5.0 NVMe M.2
-    - WD Black SN850X PCIe 5.0 NVMe M.2
-"""
-
-"""
 HTML rendering for summary table, product cards, and graphs.
 """
 
@@ -58,9 +29,15 @@ def price_to_float(x):
 def render_component_switch_js():
     excluded_js = json.dumps(sorted(EXCLUDED_CATEGORIES))
     return f"""
+<script id="excluded-categories" type="application/json">{excluded_js}</script>
 <script>
-    // Categories excluded from total computation
-    window.EXCLUDED_CATEGORIES = {excluded_js};
+    // Categories excluded from total computation (safely parsed from JSON script tag)
+    try {{
+        var exScript = document.getElementById('excluded-categories');
+        window.EXCLUDED_CATEGORIES = JSON.parse(exScript.textContent || '[]');
+    }} catch (e) {{
+        window.EXCLUDED_CATEGORIES = [];
+    }}
 
     function formatPrice(num) {{
         var n = Number(num);
@@ -130,9 +107,6 @@ def render_component_switch_js():
     }});
 </script>
 """
-
-
-## compute_summary_total moved to htmlgen.price_utils
 
 
 def _find_best_seen_date(
