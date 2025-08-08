@@ -7,6 +7,9 @@ import os
 import json
 
 
+PRODUCTS_CSV = "produits.csv"
+
+
 def normalize_and_filter_prices(entries, name):
     valid_entries = []
     for entry in entries:
@@ -23,7 +26,7 @@ def normalize_and_filter_prices(entries, name):
 def get_category_best(product_prices):
     category_best = {}
     # Load products data to get explicit categories
-    products_data = load_products("produits.csv")
+    products_data = load_products(PRODUCTS_CSV)
 
     for name, entries in product_prices.items():
         valid_entries = normalize_and_filter_prices(entries, name)
@@ -271,8 +274,35 @@ def _render_html(
     # Call render_product_cards - historical prices are now toggleable with buttons
     html.append(render_product_cards(product_prices, history, product_min_prices))
 
-    # Add JavaScript for toggle functionality
-    html.append('<script src="static/toggleHistory.js"></script>')
+    # Inline JavaScript for toggle functionality to keep a single self-contained HTML
+    html.append(
+        """
+<script>
+// Toggle visibility of price history sections (inlined)
+function toggleHistory(historyId) {
+    const historyDiv = document.getElementById(historyId);
+    const icon = document.getElementById("icon-" + historyId);
+    const button = icon ? icon.parentElement : null;
+    if (!historyDiv) return;
+    if (historyDiv.classList.contains("hidden")) {
+        historyDiv.classList.remove("hidden");
+        if (icon) icon.style.transform = "rotate(180deg)";
+        if (button) {
+            const textNode = Array.from(button.childNodes).find(n => n.nodeType === 3 && n.textContent.includes("Afficher"));
+            if (textNode) textNode.textContent = "Masquer l'historique des prix";
+        }
+    } else {
+        historyDiv.classList.add("hidden");
+        if (icon) icon.style.transform = "rotate(0deg)";
+        if (button) {
+            const textNode = Array.from(button.childNodes).find(n => n.nodeType === 3 && n.textContent.includes("Masquer"));
+            if (textNode) textNode.textContent = "Afficher l'historique des prix";
+        }
+    }
+}
+</script>
+"""
+    )
 
     html.append("</body></html>")
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -337,7 +367,7 @@ def _build_category_products_with_explicit_categories(product_prices):
 
     category_products = defaultdict(list)
     # Load products data again to get explicit categories
-    products_data = load_products("produits.csv")
+    products_data = load_products(PRODUCTS_CSV)
 
     for name, entries in product_prices.items():
         # Get the explicit category from CSV
@@ -405,7 +435,7 @@ def generate_html(product_prices, history):
 
 def main():
     """Main function to orchestrate HTML generation from scraped data."""
-    products = load_products("produits.csv")
+    products = load_products(PRODUCTS_CSV)
     history = load_history("historique_prix.csv")
     product_prices = build_product_prices(products, history)
     generate_html(product_prices, history)

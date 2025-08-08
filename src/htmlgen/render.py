@@ -34,6 +34,7 @@ HTML rendering for summary table, product cards, and graphs.
 import sys
 import os
 import math
+import json
 import pandas as pd
 import numpy as np
 from .normalize import normalize_price, get_category, get_site_label
@@ -55,16 +56,80 @@ def price_to_float(x):
 
 # Add JS for switching components (vanilla JS, maximum compatibility)
 def render_component_switch_js():
-    return """<script>
-    function switchComponent(category, productName) {
-        // Store selection in localStorage for persistence
-        var selections = JSON.parse(localStorage.getItem('componentSelections') || '{}');
-        selections[category] = productName;
-        localStorage.setItem('componentSelections', JSON.stringify(selections));
-        // Reload page to update table (simple, compatible)
-        location.reload();
-    }
-    </script>"""
+    excluded_js = json.dumps(sorted(EXCLUDED_CATEGORIES))
+    return f"""
+<script>
+    // Categories excluded from total computation
+    window.EXCLUDED_CATEGORIES = {excluded_js};
+
+    function formatPrice(num) {{
+        var n = Number(num);
+        if (!isFinite(n)) return '?';
+        return n.toFixed(2) + '€';
+    }}
+
+    function computeTotal() {{
+        var total = 0;
+        var rows = document.querySelectorAll('#summary-table tbody tr');
+        rows.forEach(function(row) {{
+            var cat = row.getAttribute('data-category');
+            if (!cat) return; // skip header/total or malformed
+            if (Array.isArray(window.EXCLUDED_CATEGORIES) && window.EXCLUDED_CATEGORIES.indexOf(cat) !== -1) return;
+            var sel = row.querySelector('select[data-category]');
+            if (!sel) return;
+            var opt = sel.options[sel.selectedIndex];
+            var price = parseFloat(opt && opt.dataset ? opt.dataset.price : 'NaN');
+            if (!isNaN(price)) total += price;
+        }});
+        var el = document.getElementById('total-price-value');
+        if (el) el.textContent = formatPrice(total);
+    }}
+
+    function switchComponent(category, selectEl) {{
+        // Persist selection
+        try {{
+            var selections = JSON.parse(localStorage.getItem('componentSelections') || '{{}}');
+            selections[category] = selectEl.value;
+            localStorage.setItem('componentSelections', JSON.stringify(selections));
+        }} catch (e) {{ /* ignore */ }}
+
+        // Update row cells from selected option's data-* attributes
+        var opt = selectEl.options[selectEl.selectedIndex];
+        var row = selectEl.closest('tr');
+        if (row && opt && opt.dataset) {{
+            var tds = row.querySelectorAll('td');
+            // price cell is index 2, site index 3, date index 4
+            var price = parseFloat(opt.dataset.price);
+            if (tds[2]) tds[2].textContent = formatPrice(price);
+            if (tds[3]) {{
+                var a = tds[3].querySelector('a');
+                if (a) {{ a.href = opt.dataset.url || '#'; a.textContent = opt.dataset.site || a.textContent; }}
+            }}
+            if (tds[4]) tds[4].textContent = opt.dataset.date || '?';
+        }}
+        // Recompute total
+        computeTotal();
+    }}
+
+    document.addEventListener('DOMContentLoaded', function() {{
+        // Apply stored selections without reloading
+        var selections = {{}};
+        try {{ selections = JSON.parse(localStorage.getItem('componentSelections') || '{{}}'); }} catch(e) {{ selections = {{}}; }}
+        document.querySelectorAll('select[data-category]').forEach(function(sel) {{
+            var cat = sel.getAttribute('data-category');
+            var saved = selections && selections[cat];
+            if (saved) {{
+                for (var i = 0; i < sel.options.length; i++) {{
+                    if (sel.options[i].value === saved) {{ sel.selectedIndex = i; break; }}
+                }}
+                switchComponent(cat, sel);
+            }}
+        }});
+        // Ensure total reflects current selections
+        computeTotal();
+    }});
+</script>
+"""
 
 
 ## compute_summary_total moved to htmlgen.price_utils
@@ -103,11 +168,23 @@ def _render_select_for_products(cat: str, products: list, selected_name: str) ->
     options = []
     for p in products:
         sel = " selected" if p["name"] == selected_name else ""
-        options.append(f'<option value="{p["name"]}"{sel}>{p["name"]}</option>')
+        price = (
+            float(p["price"])
+            if isinstance(p["price"], (int, float, str))
+            else p["price"]
+        )
+        url = p["url"]
+        date = p.get("best_seen", "?")
+        site = p.get("site_label", get_site_label(url))
+        options.append(
+            f'<option value="{p["name"]}" data-price="{price}" data-url="{url}" data-date="{date}" data-site="{site}"{sel}>{p["name"]}</option>'
+        )
     return (
-        "<select onchange=\"switchComponent('"
+        '<select data-category="'
         + cat
-        + "', this.value)\">"
+        + '" onchange="switchComponent(\''
+        + cat
+        + "', this)\">"
         + "".join(options)
         + "</select>"
     )
@@ -128,9 +205,22 @@ def _render_summary_row(
     price = float(selected["price"])
     url = selected["url"]
     best_seen = _find_best_seen_date(history, name, url, price)
-    row_html = "<tr class='hover:bg-slate-800/50 transition-colors duration-300'>"
+    # Build enriched options with date and site for client-side switching
+    enriched_products = []
+    for p in products:
+        p_best_seen = _find_best_seen_date(
+            history, p["name"], p["url"], float(p["price"])
+        )
+        enriched = dict(p)
+        enriched["best_seen"] = p_best_seen
+        enriched["site_label"] = get_site_label(p["url"])
+        enriched_products.append(enriched)
+
+    row_html = f"<tr data-category='{cat}' class='hover:bg-slate-800/50 transition-colors duration-300'>"
     row_html += td_category.format(cat)
-    row_html += td_product.format(_render_select_for_products(cat, products, name))
+    row_html += td_product.format(
+        _render_select_for_products(cat, enriched_products, name)
+    )
     row_html += td_price.format(price)
     row_html += td_site.format(url, get_site_label(url))
     row_html += td_date.format(best_seen)
@@ -146,7 +236,7 @@ def render_summary_table(
     # We'll compute the total at the end using compute_summary_total
     html.append('<div class="overflow-x-auto mb-10">')
     html.append(
-        '<table class="min-w-full glass-card rounded-xl shadow-2xl border border-slate-600 overflow-hidden">'
+        '<table id="summary-table" class="min-w-full glass-card rounded-xl shadow-2xl border border-slate-600 overflow-hidden">'
     )
     html.append(
         "<thead><tr>"
@@ -205,11 +295,13 @@ def render_summary_table(
             debug_html += "</ul></div></td></tr>"
             html.append(debug_html)
     total_price = compute_summary_total(category_products, selections)
+    # Price TD for total includes a stable id for JS updates
+    TD_PRICE_TOTAL = '<td id="total-price-value" class="border-t border-slate-700/50 px-6 py-4 font-bold text-green-400 text-lg">{:.2f}€</td>'
     html.append(
-        "<tr class='bg-slate-900/80 font-bold border-t-2 border-cyan-500/30'>"
+        "<tr id='total-row' class='bg-slate-900/80 font-bold border-t-2 border-cyan-500/30'>"
         + TD_CATEGORY.format("💰 Total")
         + TD_EMPTY
-        + TD_PRICE.format(total_price)
+        + TD_PRICE_TOTAL.format(total_price)
         + TD_EMPTY
         + TD_EMPTY
         + "</tr>"
