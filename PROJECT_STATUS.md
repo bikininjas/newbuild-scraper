@@ -45,6 +45,12 @@ The goal of this project is to build a Python-based price tracker and HTML repor
 - **✅ Code Quality:** **COMPLETED** - Reduced cognitive complexity in main logic functions through refactoring and helper function extraction.
 - **✅ Testing:** **COMPLETED** - Added unit tests for pricing totals and confirmed UI changes are reflected in the output; code runs cleanly.
 
+## Improvements
+
+- Change referential for products and price history to a more robust file database (ex: SQLite)
+- Implement caching for product data to reduce scraping frequency and improve performance.
+- Have the possibility to scrap only new products that don't have any entries in the dabatase only in the last 48h
+
 ## Current Branch Status
 
 **Branch:** `alternative_components`
