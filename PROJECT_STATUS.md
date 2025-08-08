@@ -17,6 +17,7 @@ The goal of this project is to build a Python-based price tracker and HTML repor
   - Summary table of best prices per category
   - Total price evolution graph (excluding upgrade kits)
   - Yellow warning boxes for alternative/upgrade kit products
+  - Single-file HTML output with inlined JavaScript (no external static assets)
 - **Responsive Design**: Tailwind CSS styling with French date formatting
 - **Automated Workflows**: GitHub Actions for scheduled scraping and GCS deployment
 
@@ -31,10 +32,9 @@ The goal of this project is to build a Python-based price tracker and HTML repor
 - **Upgrade Kit Pricing Issue:** ✅ **RESOLVED** - Excluded "Upgrade Kit" category from total price calculations as they represent alternatives to individual components, not additional costs.
 - **Idealo Cookie Consent:** ✅ **RESOLVED** - Implemented automatic cookie consent handling for Idealo.fr to improve price extraction success rates.
 - **Visual Product Differentiation:** ✅ **RESOLVED** - Added yellow warning boxes to clearly identify upgrade kit/alternative products in the HTML output.
- - **Centralized Exclusions:** ✅ **RESOLVED** - Centralized excluded categories in `src/htmlgen/constants.py` and reused across rendering and helpers.
- - **Price Utils Extraction:** ✅ **RESOLVED** - Extracted `compute_summary_total` to `src/htmlgen/price_utils.py` for reuse and easier testing.
- - **Unit Tests for Totals:** ✅ **RESOLVED** - Added `tests/test_totals.py` to validate exclusion logic and selection handling.
-
+- **Centralized Exclusions:** ✅ **RESOLVED** - Centralized excluded categories in `src/htmlgen/constants.py` and reused across rendering and helpers.
+- **Price Utils Extraction:** ✅ **RESOLVED** - Extracted `compute_summary_total` to `src/htmlgen/price_utils.py` for reuse and easier testing.
+- **Unit Tests for Totals:** ✅ **RESOLVED** - Added `tests/test_totals.py` to validate exclusion logic and selection handling.
 
 ## What's Missing / Next Steps
 
@@ -55,6 +55,7 @@ The goal of this project is to build a Python-based price tracker and HTML repor
 - Enhanced visual product differentiation with warning indicators
 - Improved anti-bot protection and price extraction success rates
 - Successfully tested with 97 products processed and 41 price updates collected
+ - Inlined all UI JavaScript and removed obsolete `static/toggleHistory.js` to keep a single, portable `output.html`
 
 ## Prompt for Next AI Agent
 

@@ -40,6 +40,13 @@ The generated HTML now includes:
 - **Smooth Animations**: CSS transitions provide smooth show/hide animations
 - **Responsive Design**: Toggle functionality works across all device sizes
 
+### Single-file HTML (inlined JS)
+
+- The generated `output.html` is fully self-contained: all JavaScript needed for UI interactions is inlined.
+- Dropdown selection switches components without reloading the page, persists via `localStorage`, and updates the total instantly.
+- The “Show/Hide history” toggle is implemented inline as well; no external `static/` scripts are required.
+- The previous `static/toggleHistory.js` file has been removed to avoid 404s when serving a single file.
+
 ### How the graphs work
 
 - **Total Price History graph:** Shows the sum of the best price for each product at each timestamp. The last point always matches the sum of the absolute best prices in the table. Missing prices are interpolated by repeating the last known value for visual continuity.
