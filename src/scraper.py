@@ -48,9 +48,9 @@ def get_price_requests(url, site_selectors):
         soup = BeautifulSoup(resp.text, "html.parser")
 
         # Use site-specific price extraction
-        price = extract_price_for_site(soup, url, site_selectors, "requests")
-        if price:
-            return price
+        price_info = extract_price_for_site(soup, url, site_selectors, "requests")
+        if price_info and price_info.get("price"):
+            return price_info
 
         logging.warning(
             f"No price found for {url} with selectors {site_selectors} (requests)"
@@ -153,12 +153,14 @@ def get_price_playwright(url, site_selectors):
 
             # Parse content and extract price using site-specific logic
             soup = BeautifulSoup(content, "html.parser")
-            price = extract_price_for_site(soup, url, site_selectors, "Playwright")
+            price_info = extract_price_for_site(
+                soup, url, site_selectors, "Playwright", page
+            )
 
             browser.close()
 
-            if price:
-                return price
+            if price_info and price_info.get("price"):
+                return price_info
 
             logging.warning(
                 f"No price found for {url} with selectors {site_selectors} (Playwright). HTML snippet: {content[:500]}"

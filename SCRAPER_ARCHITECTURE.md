@@ -2,28 +2,51 @@
 
 ## Overview
 
-This project follows a modular architecture designed for scalability, maintainability, and ease of extension for new e-commerce sites.
+This project follows a modular architecture designed for scalability, maintainability, and ease of extension for new e-commerce sites. The system now includes advanced vendor extraction capabilities for aggregator sites and comprehensive database management.
 
 ## Core Components
 
 ### `/src/main.py`
-- **Purpose**: Main entry point and orchestration
+- **Purpose**: Main entry point and orchestration with integrated product loading
 - **Responsibilities**: 
   - Coordinates scraping across all configured sites
-  - Handles CSV data persistence
-  - Manages Discord alerts
-  - Processes configuration from `produits.csv`
+  - Handles both SQLite and CSV data persistence
+  - Manages automated product loading from CSV templates
+  - Processes Discord alerts and HTML generation
+  - Integrates vendor extraction and marketplace detection
 
 ### `/src/sites/`
-- **Purpose**: Site-specific scraping implementations
+- **Purpose**: Site-specific scraping implementations with advanced vendor extraction
 - **Pattern**: Each site has its own module with standardized interface
 - **Current Sites**:
-  - `amazon.py` - Amazon France scraping
-  - `idealo.py` - Idealo price comparison
+  - `amazon.py` - Amazon France scraping with marketplace and Prime detection
+  - `idealo.py` - **ENHANCED** - Advanced vendor aggregator parsing with redirect following
   - `pccomponentes.py` - PC Componentes Spain
   - `topachat.py` - TopAchat France
   - `handler.py` - Generic scraping utilities
   - `config.py` - Site configuration management
+
+### `/src/sites/idealo.py` - Advanced Features
+- **Multi-Strategy Vendor Extraction**: 4-tier detection system using data attributes, logos, text patterns, and domains
+- **Redirect Following**: Automatic following of Idealo redirects to extract prices from actual vendor websites
+- **Cookie Consent Framework**: Comprehensive handling for Idealo, Amazon, Corsair, and vendor-specific dialogs
+- **Marketplace Detection**: Distinguishes between marketplace sellers and direct vendor sales
+- **Prime Eligibility**: Tracks Amazon Prime eligibility for enhanced purchasing decisions
+
+### `/src/database/`
+- **Purpose**: Database management and schema handling
+- **Components**:
+  - `models.py` - **ENHANCED** - Database models with vendor information fields
+  - `manager.py` - Database operations with vendor data support
+  - `config.py` - Database configuration and connection management
+
+### `/load_products.py`
+- **Purpose**: Automated product management system
+- **Features**:
+  - CSV-to-SQLite product loading with duplicate detection
+  - Failed URL tracking and comprehensive error handling
+  - Template-based product addition workflow
+  - Automatic CSV cleanup after successful loading
 
 ### `/src/antibot/`
 - **Purpose**: Anti-detection and stealth browsing
@@ -33,10 +56,10 @@ This project follows a modular architecture designed for scalability, maintainab
   - `stealth.js` - JavaScript stealth injection
 
 ### `/src/htmlgen/`
-- **Purpose**: HTML report generation and data visualization
+- **Purpose**: HTML report generation with vendor-aware displays
 - **Components**:
-  - `render.py` - Main HTML template rendering
-  - `data.py` - Data processing and aggregation
+  - `render.py` - **ENHANCED** - HTML template rendering with vendor information
+  - `data.py` - Data processing with marketplace and Prime status aggregation
   - `graph.py` - Price history chart generation
   - `normalize.py` - Price data normalization
   - `price_utils.py` - Price calculation utilities

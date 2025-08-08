@@ -47,6 +47,86 @@ The generated HTML now includes:
 - The “Show/Hide history” toggle is implemented inline as well; no external `static/` scripts are required.
 - The previous `static/toggleHistory.js` file has been removed to avoid 404s when serving a single file.
 
+# 🛒 Price Scraper Project (2025)
+
+## Overview
+
+This project tracks prices for computer parts (or any products) across multiple e-commerce sites. It automatically finds the best price for each product, logs price history, and generates a modern HTML dashboard with graphs and tables. All logic is modular and easy to extend.
+
+## 🆕 Enhanced Idealo Integration (August 2025)
+
+### Vendor Extraction from Aggregators
+
+Instead of generic "Idealo" entries, the scraper now extracts **actual vendor information** from aggregator sites:
+
+- **Real Vendor Names**: Shows "Amazon.fr", "Corsair.com", "Fnac.com" instead of just "Idealo"
+- **Redirect Following**: Automatically follows Idealo redirects to actual vendor sites
+- **Direct Price Scraping**: Gets prices directly from vendor pages when possible
+- **Marketplace Detection**: Identifies Amazon Marketplace vs. Amazon direct sales
+- **Prime Eligibility**: Detects and stores Amazon Prime shipping eligibility
+- **Cookie Consent Handling**: Automatically handles both Idealo and vendor cookie dialogs
+
+### Database Enhancements
+
+New fields in `price_history` table:
+
+- `vendor_name`: Actual vendor (e.g., "Amazon.fr")
+- `vendor_url`: Direct link to product on vendor site
+- `is_marketplace`: Boolean for marketplace vs. direct sales
+- `is_prime_eligible`: Boolean for Amazon Prime eligibility
+
+### Example Output
+
+Before: `Idealo - 109.99€`
+
+After: `Amazon.fr - 109€ (Prime)` with full vendor URL and marketplace status
+
+## Technical Architecture
+
+### Modular HTML Generation
+
+All HTML generation logic is now modularized:
+
+- `src/htmlgen/data.py`: Loads products and price history from CSV files
+- `src/htmlgen/normalize.py`: Price normalization, category mapping, and site label helpers
+- `src/htmlgen/render.py`: Renders summary tables and product cards
+- `src/htmlgen/graph.py`: Renders Chart.js price history graphs for all products
+- `src/generate_html.py`: Main entry point, orchestrates data loading and rendering using the above modules
+
+To add new features or fix bugs, edit the relevant module. All scripts are auto-formatted with `black`.
+
+### Extension Points
+
+- Add new product categories in `normalize.py`
+- Change table/card layout in `render.py`
+- Update graph logic in `graph.py`
+
+### Generated HTML Features
+
+The generated HTML now includes:
+
+- Category summary table (cheapest product per category)
+- Total price history graph (Chart.js)
+- Product cards grid (all prices, best price, **toggleable** history)
+- Individual price history graphs for each product (Chart.js)
+- **Interactive UI**: Historical price sections are hidden by default with individual toggle buttons for each product
+- ⚠️ Upgrade Kits shown as alternatives and excluded from total calculations
+
+### Interactive UI Features
+
+- **Toggleable Historical Prices**: Each product card has a "Show/Hide History" button to toggle the display of historical price data
+- **Hidden by Default**: Historical price sections start hidden to reduce visual clutter
+- **Individual Controls**: Each product has its own toggle - you can show history for specific products while keeping others hidden
+- **Smooth Animations**: CSS transitions provide smooth show/hide animations
+- **Responsive Design**: Toggle functionality works across all device sizes
+
+### Self-Contained Output
+
+- The generated `output.html` is fully self-contained: all JavaScript needed for UI interactions is inlined.
+- Dropdown selection switches components without reloading the page, persists via `localStorage`, and updates the total instantly.
+- The "Show/Hide history" toggle is implemented inline as well; no external `static/` scripts are required.
+- The previous `static/toggleHistory.js` file has been removed to avoid 404s when serving a single file.
+
 ### How the graphs work
 
 - **Total Price History graph:** Shows the sum of the best price for each product at each timestamp. The last point always matches the sum of the absolute best prices in the table. Missing prices are interpolated by repeating the last known value for visual continuity.
@@ -88,43 +168,104 @@ EXCLUDED_CATEGORIES: set[str] = {"Upgrade Kit", "Another Alt Category"}
   pip install -r requirements.txt
   ```
 
-### 2. Fill your product list
+### 2. Choose your database backend
 
-- Edit `produits.csv` like this:
+#### SQLite Support with Automatic Migration
+
+The scraper now supports both CSV and SQLite backends:
+
+- **SQLite** (Recommended): Better performance, caching, selective scraping
+- **CSV** (Legacy): Original format, GitHub Actions compatible
+
+#### Automatic Migration
+
+If you have existing CSV data, it will be automatically migrated to SQLite:
+
+```bash
+# Run manual migration (optional)
+python migrate_to_sqlite.py
+
+# Or let it migrate automatically on first run
+python src/main.py --db-type sqlite
+```
+
+#### Configuration
+
+Edit `database.conf` to configure the database:
+
+```bash
+# Database type: "sqlite" or "csv"
+database_type=sqlite
+
+# Cache settings
+cache_duration_hours=6
+failed_cache_duration_hours=24
+
+# Enable automatic CSV to SQLite migration
+enable_auto_migration=true
+```
+
+### 3. Fill your product list
+
+- Edit `produits.csv` like this (works with both backends):
 
   ```csv
-  URL,Product_Name
-  https://www.amazon.fr/dp/B07W7L4RBX/,"Logitech G G502 X LIGHTSPEED"
-  https://www.amazon.fr/dp/B0DKFMSMYK/,"RYZEN ™ 7 9800X3D 8 Coeurs/16 Threads"
-  https://www.pccomponentes.fr/amd-ryzen-7-7800x3d-processeur-42-ghz-96-mo-l3-boite,"RYZEN ™ 7 9800X3D 8 Coeurs/16 Threads"
+  URL,Product_Name,Category
+  https://www.amazon.fr/dp/B07W7L4RBX/,"Logitech G G502 X LIGHTSPEED","Mouse"
+  https://www.amazon.fr/dp/B0DKFMSMYK/,"RYZEN ™ 7 9800X3D 8 Coeurs/16 Threads","CPU"
+  https://www.pccomponentes.fr/amd-ryzen-7-7800x3d-processeur-42-ghz-96-mo-l3-boite,"RYZEN ™ 7 9800X3D 8 Coeurs/16 Threads","CPU"
   ...
   ```
 
 - Add as many URLs as you want for each product (just repeat the product name)
 
-### 3. Run locally
+### 4. Run locally
 
-- Set the Discord webhook (if you want alerts):
+#### Basic Usage
+
+```bash
+# Run with SQLite (recommended)
+python src/main.py --db-type sqlite
+
+# Run with CSV (legacy)
+python src/main.py --db-type csv
+
+# Generate HTML report only
+python src/generate_html.py
+```
+
+#### 🆕 Advanced Options
+
+```bash
+# Only scrape products with no data in last 48 hours
+python src/main.py --new-products-only
+
+# Custom age threshold for selective scraping
+python src/main.py --new-products-only --max-age-hours 24
+
+# Use custom configuration file
+python src/main.py --config my_database.conf
+
+# Skip HTML generation (faster for scheduled runs)
+python src/main.py --no-html
+```
+
+#### 🆕 Caching Benefits (SQLite only)
+
+- Successful prices cached for 6 hours (configurable)
+- Failed attempts cached for 24 hours with exponential backoff
+- Automatic retry scheduling for failed URLs
+- Significant performance improvement for large product lists
+
+### 5. Set up alerts (optional)
+
+- Set the Discord webhook:
 
   ```bash
   export DISCORD_WEBHOOK_URL='your_webhook_url'
   ```
 
-- Run the script:
-
-  ```bash
-  python src/main.py
-  ```
-
-- See the best price, all prices, and price history for each product in your console
-
-- To generate a modern HTML report with all products styled as Tailwind cards:
-
-  ```bash
-  python src/generate_html.py
-  ```
-
-### 4. Run automatically with GitHub Actions
+### 6. Run automatically with GitHub Actions
 
 - Add your webhook to GitHub Actions secrets as `DISCORD_WEBHOOK_URL`
 - Push your code to GitHub
