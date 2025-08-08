@@ -292,3 +292,11 @@ https://www.topachat.com/pages/detail2_cat_est_micro_puis_rubrique_est_w_ssd_pui
           git add -A
           git diff --cached --quiet || git commit -m "Update price history and format scripts"
 ```
+
+## Development
+
+- Code style is enforced by Black (configured in `pyproject.toml` with line length 100).
+- Pre-commit is set up to run Black automatically before each commit. Enable it locally:
+  - Install dev deps and set up hooks: `pip install pre-commit && pre-commit install`
+  - Format everything on demand: `pre-commit run --all-files`
+- Basic editor settings are provided via `.editorconfig`.
