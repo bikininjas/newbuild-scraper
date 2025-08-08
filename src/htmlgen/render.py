@@ -37,6 +37,7 @@ import math
 import pandas as pd
 import numpy as np
 from .normalize import normalize_price, get_category, get_site_label
+from .constants import EXCLUDED_CATEGORIES
 from .graph import render_price_history_graph, render_price_history_graph_from_series
 from utils import format_french_date_full
 
@@ -65,13 +66,34 @@ def render_component_switch_js():
     </script>"""
 
 
+def compute_summary_total(category_products, selections=None) -> float:
+    """Compute the total price from category_products excluding EXCLUDED_CATEGORIES.
+
+    Inputs:
+    - category_products: dict[str, list[dict{name, price, url}]]
+    - selections: optional dict[category -> product name]
+
+    Returns: float rounded to 2 decimals
+    """
+    selections = selections or {}
+    total = 0.0
+    for cat, products in category_products.items():
+        if not products:
+            continue
+        selected_name = selections.get(cat) if selections else products[0]["name"]
+        selected = next((p for p in products if p["name"] == selected_name), products[0])
+        price = float(selected["price"])
+        if cat not in EXCLUDED_CATEGORIES:
+            total += price
+    return round(total, 2)
+
+
 def render_summary_table(
     category_products, history, selected_products=None, debug_info=None
 ):
     html = []
     html.append(render_component_switch_js())
-    total_price = 0
-    EXCLUDED_FROM_TOTAL = {"Upgrade Kit"}
+    # We'll compute the total at the end using compute_summary_total
     html.append('<div class="overflow-x-auto mb-10">')
     html.append(
         '<table class="min-w-full glass-card rounded-xl shadow-2xl border border-slate-600 overflow-hidden">'
@@ -102,9 +124,6 @@ def render_summary_table(
         name = selected["name"]
         price = float(selected["price"])
         url = selected["url"]
-        # Exclude certain categories (e.g., Upgrade Kits) from the total calculation
-        if cat not in EXCLUDED_FROM_TOTAL:
-            total_price += price
         # Find all history entries for this product and URL
         history_entries = history[
             (history["Product_Name"] == name) & (history["URL"] == url)
@@ -174,6 +193,7 @@ def render_summary_table(
             )
             debug_html += "</ul></div></td></tr>"
             html.append(debug_html)
+    total_price = compute_summary_total(category_products, selections)
     html.append(
         "<tr class='bg-slate-900/80 font-bold border-t-2 border-cyan-500/30'>"
         + TD_CATEGORY.format("💰 Total")
@@ -185,13 +205,13 @@ def render_summary_table(
     )
     html.append("</tbody></table></div>")
     # Clarify that some categories are excluded from the total
-    if EXCLUDED_FROM_TOTAL:
+    if EXCLUDED_CATEGORIES:
         html.append(
             '<div class="text-sm text-yellow-300/80 mt-2">\n'
             + " ".join(
                 [
                     f"⚠️ {cat} non inclus dans le total (alternative aux composants)."
-                    for cat in sorted(EXCLUDED_FROM_TOTAL)
+                    for cat in sorted(EXCLUDED_CATEGORIES)
                 ]
             )
             + "</div>"
