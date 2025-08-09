@@ -3,8 +3,15 @@
 Exit non-zero if invalid."""
 import json, sys, re, pathlib
 
+# Optional jsonschema validation if library present
+try:
+    import jsonschema  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    jsonschema = None
+
 RE_URL = re.compile(r"^https?://")
 path = pathlib.Path("products.json")
+schema_path = pathlib.Path("products.schema.json")
 if not path.exists():
     print("products.json missing", file=sys.stderr)
     sys.exit(1)
@@ -13,6 +20,18 @@ try:
 except Exception as e:
     print("JSON parse error:", e, file=sys.stderr)
     sys.exit(2)
+
+# If jsonschema is available and schema file exists, validate first
+if jsonschema and schema_path.exists():
+    try:
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        jsonschema.validate(instance=data, schema=schema)
+    except jsonschema.ValidationError as ve:  # type: ignore
+        print(f"Schema validation error: {ve.message}", file=sys.stderr)
+        sys.exit(9)
+    except Exception as e:  # pragma: no cover
+        print(f"Schema validation internal error: {e}", file=sys.stderr)
+        # Continue to legacy checks
 if data.get("version") != 1:
     print("Invalid or missing version (expected 1)", file=sys.stderr)
     sys.exit(3)

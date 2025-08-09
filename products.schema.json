@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/products.schema.json",
+  "title": "Products Catalog",
+  "type": "object",
+  "required": ["version", "products"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Schema / data format version. Must be 1."
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional timestamp when file was generated."
+    },
+    "products": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "category", "urls"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "category": {
+            "type": "string",
+            "minLength": 1
+          },
+          "urls": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string",
+              "pattern": "^https?://"
+            },
+            "description": "List of product page URLs to scrape"
+          }
+        }
+      }
+    }
+  }
+}
