@@ -2,15 +2,25 @@
 
 ## Quick Start
 
-### 1. Add New Products
+### 1. Add / Update Products
 
-Edit the `produits.csv` file to add new products:
+Edit `products.json` (canonical format):
 
-```csv
-Product_Name,URL,Category
-AMD Ryzen 7 7800X3D,https://www.idealo.fr/prix/example,CPU
-NVIDIA RTX 4080,https://www.amazon.fr/product/example,GPU
+```json
+{
+   "version": 1,
+   "products": [
+      {"name": "AMD Ryzen 7 7800X3D", "category": "CPU", "urls": ["https://www.idealo.fr/prix/example"]},
+      {"name": "NVIDIA RTX 4080", "category": "GPU", "urls": ["https://www.amazon.fr/product/example"]}
+   ]
+}
 ```
+
+Rules:
+- `version` must be 1
+- Each product needs a non-empty `urls` list
+- URLs must start with http/https
+- Names should be unique (duplicates merge URLs)
 
 **Supported Categories**: Mouse, Keyboard, PSU, RAM, SSD, GPU, Cooler, Motherboard, CPU, Upgrade Kit
 
@@ -37,13 +47,11 @@ python src/main.py --db-type sqlite
 python src/main.py --new-products-only --max-age-hours 24
 ```
 
-### 3. Load Products from CSV
+### 3. JSON Import
 
-The system automatically loads products from `produits.csv` when using SQLite mode. You can also run manually:
+When you run `python src/main.py`, new products/urls in `products.json` are imported into SQLite (non-destructive). No separate load step needed.
 
-```bash
-python load_products.py
-```
+Legacy CSV loader (`produits.csv` + `load_products.py`) is deprecated.
 
 ## Database Management
 
@@ -55,7 +63,7 @@ Create a `database.conf` file to configure the database:
 [database]
 type = sqlite
 sqlite_path = price_tracker.db
-csv_products_file = produits.csv
+csv_products_file = (legacy only – prefer products.json)
 csv_history_file = historique_prix.csv
 ```
 

@@ -205,32 +205,52 @@ failed_cache_duration_hours=24
 enable_auto_migration=true
 ```
 
-### 3. Fill your product list
+### 3. Define your product list (JSON)
 
-- Edit `produits.csv` like this (works with both backends):
+`products.json` is now the canonical way to declare products (CSV loader is legacy and will be removed). It is **non‑destructive**: running the scraper adds missing products/URLs to SQLite but never deletes existing rows.
 
-  ```csv
-  URL,Product_Name,Category
-  https://www.amazon.fr/dp/B07W7L4RBX/,"Logitech G G502 X LIGHTSPEED","Mouse"
-  https://www.amazon.fr/dp/B0DKFMSMYK/,"RYZEN ™ 7 9800X3D 8 Coeurs/16 Threads","CPU"
-  https://www.pccomponentes.fr/amd-ryzen-7-7800x3d-processeur-42-ghz-96-mo-l3-boite,"RYZEN ™ 7 9800X3D 8 Coeurs/16 Threads","CPU"
-  ...
-  ```
+Example `products.json`:
 
-- Add as many URLs as you want for each product (just repeat the product name)
+```json
+{
+  "version": 1,
+  "products": [
+    {
+      "name": "Logitech G G502 X LIGHTSPEED",
+      "category": "Mouse",
+      "urls": [
+        "https://www.amazon.fr/dp/B07W7L4RBX/"
+      ]
+    },
+    {
+      "name": "RYZEN 7 9800X3D",
+      "category": "CPU",
+      "urls": [
+        "https://www.amazon.fr/dp/B0DKFMSMYK/",
+        "https://www.pccomponentes.fr/amd-ryzen-7-7800x3d-processeur-42-ghz-96-mo-l3-boite"
+      ]
+    }
+  ]
+}
+```
+
+Rules:
+1. `version` must be `1`.
+2. Each product needs `name`, `category`, and a non‑empty array of `urls`.
+3. URLs must start with http/https.
+4. Duplicate product names are merged (first wins, later URLs appended) – avoid ambiguity by keeping names unique.
+
+Add or edit products, then run the scraper; it will import new entries automatically.
 
 ### 4. Run locally
 
 #### Basic Usage
 
 ```bash
-# Run with SQLite (recommended)
-python src/main.py --db-type sqlite
+# Run (SQLite default). Automatically syncs products.json
+python src/main.py
 
-# Run with CSV (legacy)
-python src/main.py --db-type csv
-
-# Generate HTML report only
+# Generate HTML report only (uses DB contents)
 python src/generate_html.py
 ```
 
@@ -266,18 +286,20 @@ python src/main.py --no-html
   ```
 
 
-### TopAchat URL Fix & Workflow
+### TopAchat URL Guidance (JSON workflow)
 
 **TopAchat URL Format:**
-Product URLs in produits.csv must use the full TopAchat format, e.g.:
-https://www.topachat.com/pages/detail2_cat_est_micro_puis_rubrique_est_w_ssd_puis_ref_est_in20023645.html
+Use full canonical TopAchat URLs inside each product's `urls` list in `products.json`, e.g.:
+`https://www.topachat.com/pages/detail2_cat_est_micro_puis_rubrique_est_w_ssd_puis_ref_est_in20023645.html`
 
-**Workflow:**
-1. Clean database and cache: `rm -f data/scraper.db historique_prix.csv scraper.log`
-2. Add valid product URLs to produits.csv
-3. Run `python load_products.py` to load products
-4. Run `python src/main.py` to scrape and log issues
-5. Run `python generate_issues_summary.py` to review issues
+**Recommended JSON Workflow:**
+1. (Optional) Backup DB: `cp data/scraper.db data/scraper_backup_$(date +%Y%m%d).db`
+2. Edit `products.json` (add / remove URLs)
+3. Run `python src/main.py` (imports new products/urls)
+4. Inspect logs for failed URLs or issues
+5. (Optional) Run `python generate_issues_summary.py` for cleanup hints
+
+Legacy CSV steps are deprecated; avoid mixing both to prevent confusion.
 
 ### 6. Run automatically with GitHub Actions
 

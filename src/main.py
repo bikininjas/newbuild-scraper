@@ -11,6 +11,7 @@ from sites.config import get_site_selector
 from alerts import send_discord_alert
 from generate_html import generate_html
 from database import DatabaseManager, DatabaseConfig
+from json_products import import_from_json, ProductValidationError  # NEW
 
 # Import the product loader
 import sys
@@ -23,6 +24,7 @@ DEFAULT_DEBUG_DOMAINS = ["topachat.com"]
 
 # Legacy file paths for backward compatibility
 PRODUCTS_FILE = "produits.csv"
+JSON_PRODUCTS_FILE = "products.json"  # NEW
 HISTORY_FILE = "historique_prix.csv"
 LOG_FILE = "scraper.log"
 
@@ -209,37 +211,6 @@ def save_new_rows(df_new, history, debug_domains=None):
     return history
 
 
-import argparse
-from alerts import send_discord_alert
-from generate_html import generate_html
-
-
-def load_products_from_csv(db_manager, db_config):
-    """Load products from CSV file to database if new products are present."""
-    try:
-        # Check if CSV file exists and has new products
-        if os.path.exists(PRODUCTS_FILE):
-            loader = ProductLoader(csv_path=PRODUCTS_FILE)
-            loaded_count, failed_urls = loader.load_products_to_db()
-
-            if loaded_count > 0:
-                logging.info(f"Loaded {loaded_count} new products from {PRODUCTS_FILE}")
-
-                if failed_urls:
-                    logging.warning(f"Failed to process {len(failed_urls)} URLs")
-                    for url in failed_urls:
-                        logging.warning(f"Failed URL: {url}")
-
-                # Clear CSV after successful loading (optional - can be disabled)
-                # loader.clear_csv_after_load()
-                # logging.info(f"Cleared {PRODUCTS_FILE} after successful loading")
-            else:
-                logging.info("No new products found in CSV file")
-
-    except Exception as e:
-        logging.error(f"Error loading products from CSV: {e}")
-
-
 def setup_database_manager(args):
     """Setup and return database manager based on configuration."""
     # Initialize database manager
@@ -256,36 +227,21 @@ def setup_database_manager(args):
     return db_manager, db_config
 
 
-def get_products_to_scrape(args, db_manager, db_config):
-    """Get products that need to be scraped."""
-    if args.new_products_only:
-        products_to_scrape = db_manager.get_products_needing_scrape(args.max_age_hours)
-        logging.info(
-            f"Found {len(products_to_scrape)} products needing scrape (max age: {args.max_age_hours}h)"
-        )
+def get_products_to_scrape(args, db_manager):
+    """Return DataFrame of products (name/url) needing scrape or all products."""
+    import pandas as pd
 
-        # Convert to DataFrame format for compatibility
-        if products_to_scrape:
-            products_data = []
-            for name, url in products_to_scrape:
-                products_data.append({"Product_Name": name, "URL": url})
-            return pd.DataFrame(products_data)
-        else:
-            logging.info("No products need scraping, exiting")
-            return None
+    if args.new_products_only:
+        pairs = db_manager.get_products_needing_scrape(args.max_age_hours)
     else:
-        # Get all products
-        if db_config.database_type == "csv":
-            return pd.read_csv(PRODUCTS_FILE)
-        else:
-            # Build products DataFrame from database
-            all_products = db_manager.get_products()
-            products_data = []
-            for product in all_products:
-                urls = db_manager.get_product_urls(product.name)
-                for url_entry in urls:
-                    products_data.append({"Product_Name": product.name, "URL": url_entry.url})
-            return pd.DataFrame(products_data)
+        pairs = []
+        for product in db_manager.get_products():
+            for url_entry in db_manager.get_product_urls(product.name):
+                pairs.append((product.name, url_entry.url))
+    if not pairs:
+        logging.info("No products need scraping, exiting")
+        return None
+    return pd.DataFrame([{"Product_Name": n, "URL": u} for n, u in pairs])
 
 
 def scrape_products(products, args, db_manager, db_config):
@@ -364,12 +320,23 @@ def main():
     # Setup database
     db_manager, db_config = setup_database_manager(args)
 
-    # Load products from CSV if available (for SQLite database only)
-    if db_config.database_type == "sqlite":
-        load_products_from_csv(db_manager, db_config)
+    # JSON import (non-destructive) if file exists
+    if Path(JSON_PRODUCTS_FILE).exists():
+        try:
+            added_p, added_u = import_from_json(db_manager, JSON_PRODUCTS_FILE)
+            if added_p or added_u:
+                logging.info(
+                    f"[JSON] Imported {added_p} new products and {added_u} new urls from {JSON_PRODUCTS_FILE}"
+                )
+            else:
+                logging.info("[JSON] No new products/urls from JSON (already in DB)")
+        except ProductValidationError as e:
+            logging.error(f"[JSON] Validation error: {e}")
+        except Exception as e:
+            logging.error(f"[JSON] Unexpected import error: {e}")
 
     # Get products to scrape
-    products = get_products_to_scrape(args, db_manager, db_config)
+    products = get_products_to_scrape(args, db_manager)
     if products is None:
         return
 

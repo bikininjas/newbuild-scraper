@@ -1,7 +1,7 @@
 # Project Context & Status: newbuild-scraper
 
 ## Goal
-The goal of this project is to build a Python-based price tracker and HTML report generator for PC components. It scrapes prices from multiple e-commerce sites, tracks historical prices, and generates a modern HTML dashboard with product cards, price graphs, and summary tables. The system supports advanced vendor extraction from aggregator sites and provides automated product management through CSV loading.
+The goal of this project is to build a Python-based price tracker and HTML report generator for PC components. It scrapes prices from multiple e-commerce sites, tracks historical prices, and generates a modern HTML dashboard with product cards, price graphs, and summary tables. The system supports advanced vendor extraction from aggregator sites and now uses a JSON-based product declaration (`products.json`) replacing the former CSV loader (CSV kept only for backward compatibility exports).
 
 ## Current Features
 - **Multi-site Price Scraping**: Scrapes prices from Amazon.fr, Idealo.fr, LDLC.com, TopAchat.com, Materiel.net, PCComponentes.es
@@ -28,7 +28,7 @@ The goal of this project is to build a Python-based price tracker and HTML repor
   - Single-file HTML output with inlined JavaScript (no external static assets)
 - **Responsive Design**: Tailwind CSS styling with French date formatting
 - **Automated Workflows**: GitHub Actions for scheduled scraping and GCS deployment
-- **Product Management**: Automated CSV-to-SQLite loading with duplicate detection and failed URL tracking
+- **Product Management**: JSON (`products.json`) driven non-destructive import (adds new products/URLs) with duplicate detection and failed URL tracking (legacy CSV export still available)
 
 ## Recent Enhancements
 
@@ -45,20 +45,20 @@ The goal of this project is to build a Python-based price tracker and HTML repor
 - **Product Loading System**: Automated CSV-to-SQLite loading with `load_products.py`
 - **Duplicate Prevention**: Smart detection of existing products to prevent database bloat
 - **Failed URL Tracking**: Comprehensive logging and handling of problematic URLs
-- **Template System**: Updated `produits.csv` as template with example entries for easy product addition
+- **Product Declaration**: Switched from `produits.csv` template to canonical `products.json` format (versioned) for explicit product/category/URL mapping
 
 ### 🛠️ TopAchat URL Fix & Workflow
 
 **TopAchat URL Format:**
-Product URLs in produits.csv must use the full TopAchat format, e.g.:
+Use full canonical TopAchat URLs inside each product's `urls` list in `products.json`, e.g.:
 https://www.topachat.com/pages/detail2_cat_est_micro_puis_rubrique_est_w_ssd_puis_ref_est_in20023645.html
 
-**Workflow:**
-1. Clean database and cache: `rm -f data/scraper.db historique_prix.csv scraper.log`
-2. Add valid product URLs to produits.csv
-3. Run `python load_products.py` to load products
-4. Run `python src/main.py` to scrape and log issues
-5. Run `python generate_issues_summary.py` to review issues
+**JSON Workflow:**
+1. (Optional) Backup DB: `cp data/scraper.db data/scraper_backup_$(date +%Y%m%d).db`
+2. Edit `products.json` (add/remove URLs)
+3. Run `python src/main.py` (imports new products/urls)
+4. Review logs / issues summary
+5. Iterate
 
 ### ✅ **COMPLETED**: Project Organization and Documentation
 - **Test Cleanup**: Removed all debugging scripts and test CSV files for production readiness
