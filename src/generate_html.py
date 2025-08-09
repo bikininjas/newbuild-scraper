@@ -1,13 +1,19 @@
-from scraper.html.data import load_history
-from scraper.html.normalize import normalize_price, get_category, get_site_label
-from scraper.html.render import render_summary_table, render_product_cards
-from scraper.html.graph import render_all_price_graphs
-from utils import format_french_date
-from scraper.persistence.sqlite import DatabaseManager
-from database import DatabaseConfig
+"""Legacy HTML generation module (will be deprecated).
+
+Adds delegation to the new SingleFileHTMLBuilder via generate_html(..., mode="builder").
+Default mode remains 'legacy' until tests validate parity; CLI can switch.
+"""
+
 from pathlib import Path
 import os
 import json
+from database import DatabaseConfig
+from scraper.persistence.sqlite import DatabaseManager
+from utils import format_french_date
+from htmlgen.builder import SingleFileHTMLBuilder
+from htmlgen.normalize import normalize_price, get_category, get_site_label
+from htmlgen.render import render_summary_table, render_product_cards
+from htmlgen.data import load_history
 
 
 # PRODUCTS_CSV legacy removed (JSON + DB now authoritative)
@@ -417,7 +423,29 @@ def _remove_duplicates_within_categories(category_products):
     return category_products
 
 
-def generate_html(product_prices, history):
+def generate_html(product_prices, history, mode: str = "legacy", products_meta: dict | None = None):
+    """Generate HTML using legacy pipeline or new builder.
+
+    Parameters
+    ----------
+    product_prices: dict
+        Mapping product name -> list[{url, price}].
+    history: pandas.DataFrame
+        Price history dataframe.
+    mode: str
+        'legacy' (default) or 'builder'.
+    products_meta: Optional mapping name -> {category: str, urls: [...]} used by builder path.
+    """
+    if mode == "builder":
+        builder = SingleFileHTMLBuilder()
+        products_meta = products_meta or {}
+        html = builder.build(product_prices, history, products_meta)
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        output_path = os.path.join(project_root, "output.html")
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(html)
+        print(f"[generate_html.py] (builder) HTML file written to: {output_path}")
+        return
     # Ensure all helpers are defined before use
     # Get best product per category and normalized product_prices
     category_best, product_prices = get_category_best(product_prices)
@@ -454,7 +482,17 @@ def main():
         urls = [u.url for u in db_manager.get_product_urls(product.name)]
         products[product.name] = {"urls": urls, "category": product.category}
     product_prices = build_product_prices(products, history)
-    generate_html(product_prices, history)
+    # Build products_meta for builder path (name -> {category, urls})
+    products_meta = {
+        name: {"category": data["category"], "urls": data["urls"]}
+        for name, data in products.items()
+    }
+    generate_html(
+        product_prices,
+        history,
+        mode=os.environ.get("HTML_MODE", "legacy"),
+        products_meta=products_meta,
+    )
 
 
 if __name__ == "__main__":

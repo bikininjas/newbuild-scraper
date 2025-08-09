@@ -293,13 +293,25 @@ def main():
         default="database.conf",
         help="Path to database configuration file",
     )
+    parser.add_argument(
+        "--html-mode",
+        choices=["legacy", "builder"],
+        default=os.environ.get("HTML_MODE", "legacy"),
+        help="HTML generation mode (legacy or builder). Can also set env HTML_MODE.",
+    )
+    parser.add_argument(
+        "--force-all",
+        action="store_true",
+        help="Ignore cache and scrape all URLs (overrides --new-products-only).",
+    )
     args = parser.parse_args()
 
     # Setup database
     db_manager, db_config = setup_database_manager(args)
 
-    # JSON import (non-destructive) if file exists
-    if Path(JSON_PRODUCTS_FILE).exists():
+    def import_products_if_any():
+        if not Path(JSON_PRODUCTS_FILE).exists():
+            return
         try:
             added_p, added_u = import_from_json(db_manager, JSON_PRODUCTS_FILE)
             if added_p or added_u:
@@ -310,10 +322,16 @@ def main():
                 logging.info("[JSON] No new products/urls from JSON (already in DB)")
         except ProductValidationError as e:
             logging.error(f"[JSON] Validation error: {e}")
-        except Exception as e:
+        except Exception as e:  # pragma: no cover - unexpected
             logging.error(f"[JSON] Unexpected import error: {e}")
 
+    import_products_if_any()
+
     # Get products to scrape
+    # If force-all, override selective flags
+    if args.force_all:
+        args.new_products_only = False
+        logging.info("--force-all specified: scraping every product URL (ignoring cache)")
     products = get_products_to_scrape(args, db_manager)
     if products is None:
         return
@@ -322,11 +340,26 @@ def main():
     history = db_manager.get_price_history()
 
     # Scrape products
-    product_prices, updated_rows = scrape_products(products, args, db_manager, db_config)
+    if args.force_all and db_config.database_type == "sqlite":
+        # Temporarily disable cache check by monkey-patching is_url_cached
+        original_is_cached = db_manager.is_url_cached
+        db_manager.is_url_cached = lambda url: False
+        product_prices, updated_rows = scrape_products(products, args, db_manager, db_config)
+        db_manager.is_url_cached = original_is_cached
+    else:
+        product_prices, updated_rows = scrape_products(products, args, db_manager, db_config)
 
     # Generate HTML report
-    if not args.no_html:
-        generate_html(product_prices, history)
+    def maybe_generate_html():
+        if args.no_html:
+            return
+        products_meta = {}
+        for product in db_manager.get_products():
+            urls = [u.url for u in db_manager.get_product_urls(product.name)]
+            products_meta[product.name] = {"category": product.category, "urls": urls}
+        generate_html(product_prices, history, mode=args.html_mode, products_meta=products_meta)
+
+    maybe_generate_html()
 
     # Save results to database
     save_scraping_results(updated_rows, db_manager, db_config)
