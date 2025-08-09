@@ -7,11 +7,11 @@ This project follows a modular architecture designed for scalability, maintainab
 ## Core Components
 
 ### `/src/main.py`
-- **Purpose**: Main entry point and orchestration with integrated product loading
+- **Purpose**: Main entry point and orchestration
 - **Responsibilities**: 
   - Coordinates scraping across all configured sites
-  - Handles both SQLite and CSV data persistence
-  - Manages automated product loading from CSV templates
+  - Manages SQLite data persistence
+  - Performs non-destructive JSON (`products.json`) import of product definitions
   - Processes Discord alerts and HTML generation
   - Integrates vendor extraction and marketplace detection
 
@@ -40,13 +40,9 @@ This project follows a modular architecture designed for scalability, maintainab
   - `manager.py` - Database operations with vendor data support
   - `config.py` - Database configuration and connection management
 
-### `/load_products.py`
-- **Purpose**: Automated product management system
-- **Features**:
-  - CSV-to-SQLite product loading with duplicate detection
-  - Failed URL tracking and comprehensive error handling
-  - Template-based product addition workflow
-  - Automatic CSV cleanup after successful loading
+### `products.json`
+- **Purpose**: Canonical product declaration file (versioned)
+- **Notes**: Imported non-destructively at runtime (adds new products/URLs; does not delete)
 
 ### `/src/antibot/`
 - **Purpose**: Anti-detection and stealth browsing
@@ -72,11 +68,11 @@ This project follows a modular architecture designed for scalability, maintainab
 
 ## Data Flow
 
-1. **Configuration Loading**: `produits.csv` defines products and URLs to monitor
+1. **Product Import**: `products.json` parsed & validated; new products/URLs synced into SQLite
 2. **Site Processing**: Each site module extracts prices using specialized selectors
 3. **Price Normalization**: `clean_price()` function handles various price formats (€579.95, 579€95, etc.)
-4. **Data Persistence**: Results saved to `historique_prix.csv` with timestamps
-5. **Report Generation**: HTML reports created with price history charts and comparisons
+4. **Data Persistence**: Results saved to SQLite (`price_history` table)
+5. **Report Generation**: HTML reports with price history charts and comparisons
 6. **Alert System**: Discord notifications for significant price changes
 
 ## Key Design Patterns

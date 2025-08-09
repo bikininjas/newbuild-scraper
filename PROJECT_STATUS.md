@@ -13,8 +13,7 @@ The goal of this project is to build a Python-based price tracker and HTML repor
 - **Anti-bot Protection**: Playwright-based scraping with stealth mode and site-specific behavior handling
 - **Database Support**: 
   - SQLite database with enhanced schema supporting vendor information
-  - CSV fallback mode for backward compatibility
-  - Automatic CSV-to-SQLite product loading system
+  - JSON-driven product declaration (`products.json`) as single source of truth
 - **Category-based Organization**: Products organized by categories (Mouse, Keyboard, PSU, RAM, SSD, GPU, Cooler, Motherboard, CPU, Upgrade Kit)
 - **Smart Price Calculations**: Excludes "Upgrade Kit" items from total price calculations as they represent alternatives to individual components
 - **Historical Price Tracking**: Enhanced database schema with vendor details, marketplace status, and Prime eligibility
@@ -41,11 +40,11 @@ The goal of this project is to build a Python-based price tracker and HTML repor
 - **Production Testing**: Successfully validated with real vendor extraction showing "Amazon.fr - 109€ (Prime)" results
 
 ### ✅ **COMPLETED**: Database and Product Management
-- **SQLite Migration**: Complete database architecture with backward-compatible CSV export
-- **Product Loading System**: Automated CSV-to-SQLite loading with `load_products.py`
+- **SQLite Backend**: Consolidated architecture (CSV mode removed)
+- **Product Loading System**: JSON non-destructive import (adds new products/URLs, never deletes)
 - **Duplicate Prevention**: Smart detection of existing products to prevent database bloat
 - **Failed URL Tracking**: Comprehensive logging and handling of problematic URLs
-- **Product Declaration**: Switched from `produits.csv` template to canonical `products.json` format (versioned) for explicit product/category/URL mapping
+- **Product Declaration**: Canonical `products.json` (versioned) for explicit product/category/URL mapping
 
 ### 🛠️ TopAchat URL Fix & Workflow
 
@@ -99,9 +98,9 @@ https://www.topachat.com/pages/detail2_cat_est_micro_puis_rubrique_est_w_ssd_pui
 
 ### ✅ **COMPLETED**: Database and Product Management System
 
-- **SQLite Migration**: Complete database architecture with backward-compatible CSV export for GitHub Actions
-- **Product Loading System**: Automated CSV-to-SQLite loading with `load_products.py` integrated into main workflow
-- **Template System**: Updated `produits.csv` as template with clear examples for easy product addition
+- **SQLite Migration**: Complete database architecture (single backend)
+- **Product Loading System**: JSON non-destructive import integrated into main workflow
+- **Template System**: `products.json` serves as editable template (validated & versioned)
 - **Duplicate Prevention**: Smart detection to prevent database bloat while allowing URL updates
 - **Failed URL Tracking**: Comprehensive logging and handling of problematic URLs with retry mechanisms
 - **Workflow Integration**: Product loader automatically runs before scraping in main.py for seamless operation

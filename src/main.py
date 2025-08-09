@@ -11,21 +11,13 @@ from sites.config import get_site_selector
 from alerts import send_discord_alert
 from generate_html import generate_html
 from database import DatabaseManager, DatabaseConfig
-from json_products import import_from_json, ProductValidationError  # NEW
-
-# Import the product loader
-import sys
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from load_products import ProductLoader
+from json_products import import_from_json, ProductValidationError
 
 # Default domains for which debug logging is enabled
 DEFAULT_DEBUG_DOMAINS = ["topachat.com"]
 
-# Legacy file paths for backward compatibility
-PRODUCTS_FILE = "produits.csv"
-JSON_PRODUCTS_FILE = "products.json"  # NEW
-HISTORY_FILE = "historique_prix.csv"
+# File paths
+JSON_PRODUCTS_FILE = "products.json"
 LOG_FILE = "scraper.log"
 
 setup_logging(LOG_FILE)
@@ -196,21 +188,6 @@ def process_product_row(row, args, product_prices, updated_rows, now_iso, today)
             )
 
 
-def save_new_rows(df_new, history, debug_domains=None):
-    """Save new rows to history and log debug info for specific domains."""
-    domains = debug_domains or DEFAULT_DEBUG_DOMAINS
-    df_new = df_new.dropna(how="all")
-    logging.info(f"[CSV] DataFrame to add: {df_new}")
-    if not df_new.empty:
-        history = pd.concat([history, df_new], ignore_index=True)
-        logging.info(f"[CSV] Saving {len(df_new)} new rows to {HISTORY_FILE}")
-        history.to_csv(HISTORY_FILE, index=False)
-        for domain in domains:
-            domain_rows = df_new[df_new["URL"].str.contains(domain)]
-            logging.info(f"[{domain.upper()}] Rows saved to CSV: {domain_rows}")
-    return history
-
-
 def setup_database_manager(args):
     """Setup and return database manager based on configuration."""
     # Initialize database manager
@@ -350,14 +327,12 @@ def main():
     if not args.no_html:
         generate_html(product_prices, history)
 
-    # Save results
+    # Save results to database
     save_scraping_results(updated_rows, db_manager, db_config)
 
     logging.info("Scraping completed successfully")
 
-    if updated_rows:
-        df_new = pd.DataFrame(updated_rows)
-        history = save_new_rows(df_new, history, args.debug_domains)
+    # CSV export & history CSV management removed during CSV purge.
 
 
 if __name__ == "__main__":

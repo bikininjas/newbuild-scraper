@@ -202,7 +202,7 @@ def check_product_mismatch(page: Page, original_url: str, db_manager=None) -> bo
             f"[IDEALO] CRITICAL: Product mismatch detected for URL: {original_url}\n"
             f"  Expected brand: {expected_brand} (from URL)\n"
             f"  Actual product name: {actual_product_name}\n"
-            f"  ACTION: Please update or remove this URL from produits.csv."
+            f"  ACTION: Please review this URL in products.json (or deactivate it)."
         )
 
         return True
@@ -239,7 +239,9 @@ def check_product_mismatch(page: Page, original_url: str, db_manager=None) -> bo
 
             # Log critical error and recommendation
             logger.error(f"[IDEALO] CRITICAL: URL {original_url} serves wrong product!")
-            logger.error("[IDEALO] This URL should be removed or corrected in produits.csv")
+            logger.error(
+                "[IDEALO] This URL should be removed or corrected in products.json (or deactivated)"
+            )
 
             return True
 

@@ -12,20 +12,15 @@ class DatabaseConfig:
 
     def __init__(
         self,
-        database_type: str = "sqlite",  # "sqlite" or "csv"
+        database_type: str = "sqlite",
         sqlite_path: Optional[str] = None,
-        csv_products_path: str = "produits.csv",
-        csv_history_path: str = "historique_prix.csv",
         cache_duration_hours: int = 6,
         failed_cache_duration_hours: int = 24,
-        enable_auto_migration: bool = True,
     ):
-        self.database_type = database_type
-        self.csv_products_path = csv_products_path
-        self.csv_history_path = csv_history_path
+        # Force sqlite
+        self.database_type = "sqlite"
         self.cache_duration_hours = cache_duration_hours
         self.failed_cache_duration_hours = failed_cache_duration_hours
-        self.enable_auto_migration = enable_auto_migration
 
         # Set default SQLite path if not provided
         if sqlite_path is None:
@@ -40,13 +35,10 @@ class DatabaseConfig:
     def from_env(cls) -> "DatabaseConfig":
         """Create config from environment variables."""
         return cls(
-            database_type=os.getenv("DB_TYPE", "sqlite"),
+            database_type="sqlite",
             sqlite_path=os.getenv("DB_SQLITE_PATH"),
-            csv_products_path=os.getenv("DB_CSV_PRODUCTS", "produits.csv"),
-            csv_history_path=os.getenv("DB_CSV_HISTORY", "historique_prix.csv"),
             cache_duration_hours=int(os.getenv("DB_CACHE_HOURS", "6")),
             failed_cache_duration_hours=int(os.getenv("DB_FAILED_CACHE_HOURS", "24")),
-            enable_auto_migration=os.getenv("DB_AUTO_MIGRATE", "true").lower() == "true",
         )
 
     @classmethod
@@ -62,11 +54,8 @@ class DatabaseConfig:
                         config[key.strip()] = value.strip()
 
         return cls(
-            database_type=config.get("database_type", "sqlite"),
+            database_type="sqlite",
             sqlite_path=config.get("sqlite_path"),
-            csv_products_path=config.get("csv_products_path", "produits.csv"),
-            csv_history_path=config.get("csv_history_path", "historique_prix.csv"),
             cache_duration_hours=int(config.get("cache_duration_hours", "6")),
             failed_cache_duration_hours=int(config.get("failed_cache_duration_hours", "24")),
-            enable_auto_migration=config.get("enable_auto_migration", "true").lower() == "true",
         )

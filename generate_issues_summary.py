@@ -103,49 +103,32 @@ def generate_issues_summary(auto_handle=False):
 
             print()
 
-    # Generate CSV update recommendations
+    # Guidance for JSON maintenance
     print("\n" + "=" * 50)
-    print("📝 RECOMMENDED ACTIONS FOR produits.csv")
+    print("📝 RECOMMENDED ACTIONS FOR products.json")
     print("=" * 50)
 
-    print("\nURLs that should be REMOVED or UPDATED:")
+    print("\nReview these URLs in products.json (remove, update, or deactivate via DB):")
     print("-" * 40)
-
     for fix in urls_to_fix:
         issue_type = fix["issue_type"]
         if issue_type == "404_error":
-            action = "❌ REMOVE (404 Not Found)"
+            action = "❌ REMOVE URL (404)"
         elif issue_type == "name_mismatch":
-            action = "⚠️  UPDATE (Wrong Product)"
+            action = "⚠️  UPDATE URL (Wrong Product Content)"
         elif issue_type == "scrape_error":
-            action = "🔧 CHECK (Scraping Error)"
+            action = "🔧 INVESTIGATE SELECTORS"
         elif issue_type == "anti_bot":
-            action = "🤖 MONITOR (Anti-bot Protection)"
+            action = "🤖 RETRY LATER (Anti-bot)"
         else:
             action = "🔍 INVESTIGATE"
+        print(
+            f"{action}\n  Product: {fix['product_name']}\n  URL: {fix['url']}\n  Issue: {fix['error']}\n"
+        )
 
-        print(f"{action}")
-        print(f"  Product: {fix['product_name']}")
-        print(f"  URL: {fix['url']}")
-        print(f"  Issue: {fix['error']}")
-        print()
-
-    # Generate CSV format for easy copy-paste
-    print("\n" + "=" * 50)
-    print("📄 QUICK FIX: Update produits.csv")
-    print("=" * 50)
-
-    print("\n1. REMOVE these lines from produits.csv:")
-    print("-" * 40)
-    for fix in urls_to_fix:
-        if fix["issue_type"] in ["404_error", "name_mismatch"]:
-            print(f'# REMOVE: {fix["product_name"]},{fix["url"]},{fix.get("category", "Unknown")}')
-
-    print("\n2. FIND CORRECT URLs for these products:")
-    print("-" * 40)
-    for fix in urls_to_fix:
-        if fix["issue_type"] == "name_mismatch":
-            print(f'# FIND NEW URL: {fix["product_name"]} (current URL serves wrong product)')
+    print(
+        "\nIf removing URLs, update products.json then run main to sync (non-destructive add only). For deactivation use DatabaseManager.deactivate_product_url()."
+    )
 
     # Summary statistics
     print("\n" + "=" * 50)
@@ -165,7 +148,9 @@ def generate_issues_summary(auto_handle=False):
         print(f"  {issue_type.replace('_', ' ').title()}: {count}")
 
     print(f"\nGenerated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("\n💡 TIP: After fixing URLs in produits.csv, run the scraper again to verify fixes.")
+    print(
+        "\n💡 TIP: After editing products.json, run the scraper to import new URLs (removals must be handled manually if desired)."
+    )
 
 
 if __name__ == "__main__":

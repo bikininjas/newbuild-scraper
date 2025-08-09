@@ -1,15 +1,10 @@
-"""
-Database manager with support for both SQLite and CSV backends.
-Includes automatic migration and caching functionality.
-"""
+"""SQLite-only database manager (CSV support removed)."""
 
 import sqlite3
 import pandas as pd
-import csv
 import logging
 from datetime import datetime, timedelta
-from pathlib import Path
-from typing import List, Dict, Optional, Tuple, Any
+from typing import List, Optional, Tuple
 from contextlib import contextmanager
 
 from .config import DatabaseConfig
@@ -17,16 +12,14 @@ from .models import Product, PriceHistory, URLEntry, CacheEntry, CREATE_TABLES_S
 
 
 class DatabaseManager:
-    """Unified database manager supporting both SQLite and CSV backends."""
+    """Database manager (SQLite only)."""
 
     def __init__(self, config: Optional[DatabaseConfig] = None):
         self.config = config or DatabaseConfig()
         self.logger = logging.getLogger(__name__)
 
-        if self.config.database_type == "sqlite":
-            self._init_sqlite()
-            if self.config.enable_auto_migration:
-                self._migrate_from_csv_if_needed()
+    # Initialize database immediately
+    self._init_sqlite()
 
     def _init_sqlite(self):
         """Initialize SQLite database and create tables."""
@@ -47,144 +40,6 @@ class DatabaseManager:
             yield conn
         finally:
             conn.close()
-
-    def _migrate_from_csv_if_needed(self):
-        """Migrate data from CSV files to SQLite if database is empty."""
-        with self._get_connection() as conn:
-            # Check if we have any products
-            result = conn.execute("SELECT COUNT(*) FROM products").fetchone()
-            if result[0] > 0:
-                self.logger.info("SQLite database already contains data, skipping migration")
-                return
-
-        self.logger.info("Migrating data from CSV to SQLite...")
-
-        # Migrate products from CSV
-        if Path(self.config.csv_products_path).exists():
-            self._migrate_products_from_csv()
-
-        # Migrate price history from CSV
-        if Path(self.config.csv_history_path).exists():
-            self._migrate_history_from_csv()
-
-        self.logger.info("Migration completed successfully")
-
-    def _migrate_products_from_csv(self):
-        """Migrate products from produits.csv to SQLite."""
-        products_data = {}
-
-        with open(self.config.csv_products_path, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                if not row.get("Product_Name") or not row.get("URL"):
-                    continue
-
-                name = row["Product_Name"].strip()
-                url = row["URL"].strip()
-                category = row.get("Category", "Other").strip()
-
-                if not name or not url:
-                    continue
-
-                if name not in products_data:
-                    products_data[name] = {"category": category, "urls": []}
-
-                if url not in products_data[name]["urls"]:
-                    products_data[name]["urls"].append(url)
-
-        # Insert into SQLite
-        with self._get_connection() as conn:
-            for name, data in products_data.items():
-                # Insert product
-                cursor = conn.execute(
-                    "INSERT OR IGNORE INTO products (name, category) VALUES (?, ?)",
-                    (name, data["category"]),
-                )
-
-                # Get product ID
-                product_id = conn.execute(
-                    "SELECT id FROM products WHERE name = ?", (name,)
-                ).fetchone()[0]
-
-                # Insert URLs
-                for url in data["urls"]:
-                    site_name = self._extract_site_name(url)
-                    conn.execute(
-                        "INSERT OR IGNORE INTO urls (product_id, url, site_name) VALUES (?, ?, ?)",
-                        (product_id, url, site_name),
-                    )
-
-            conn.commit()
-
-        self.logger.info(f"Migrated {len(products_data)} products from CSV")
-
-    def _migrate_history_from_csv(self):
-        """Migrate price history from historique_prix.csv to SQLite."""
-        try:
-            df = pd.read_csv(self.config.csv_history_path, encoding="utf-8")
-        except Exception as e:
-            self.logger.warning(f"Could not read history CSV: {e}")
-            return
-
-        migrated_count = 0
-
-        with self._get_connection() as conn:
-            for _, row in df.iterrows():
-                if (
-                    pd.isna(row.get("Product_Name"))
-                    or pd.isna(row.get("URL"))
-                    or pd.isna(row.get("Price"))
-                ):
-                    continue
-
-                # Get product ID
-                product_result = conn.execute(
-                    "SELECT id FROM products WHERE name = ?", (row["Product_Name"],)
-                ).fetchone()
-
-                if not product_result:
-                    continue
-
-                product_id = product_result[0]
-                site_name = self._extract_site_name(row["URL"])
-
-                # Parse timestamp
-                scraped_at = None
-                if not pd.isna(row.get("Timestamp_ISO")):
-                    try:
-                        scraped_at = datetime.fromisoformat(
-                            row["Timestamp_ISO"].replace("Z", "+00:00")
-                        )
-                    except:
-                        pass
-
-                if not scraped_at and not pd.isna(row.get("Date")):
-                    try:
-                        scraped_at = datetime.strptime(row["Date"], "%Y-%m-%d")
-                    except:
-                        pass
-
-                if not scraped_at:
-                    scraped_at = datetime.now()
-
-                # Insert price history
-                conn.execute(
-                    """INSERT OR IGNORE INTO price_history 
-                       (product_id, url, price, scraped_at, site_name) 
-                       VALUES (?, ?, ?, ?, ?)""",
-                    (
-                        product_id,
-                        row["URL"],
-                        float(row["Price"]),
-                        scraped_at,
-                        site_name,
-                    ),
-                )
-                migrated_count += 1
-
-            conn.commit()
-
-        self.logger.info(f"Migrated {migrated_count} price records from CSV")
 
     def _extract_site_name(self, url: str) -> str:
         """Extract site name from URL."""
@@ -209,28 +64,7 @@ class DatabaseManager:
     # Product management methods
     def get_products(self) -> List[Product]:
         """Get all products."""
-        if self.config.database_type == "csv":
-            return self._get_products_csv()
-        else:
-            return self._get_products_sqlite()
-
-    def _get_products_csv(self) -> List[Product]:
-        """Get products from CSV."""
-        products = []
-        try:
-            with open(self.config.csv_products_path, "r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                seen_products = set()
-                for row in reader:
-                    name = row.get("Product_Name", "").strip()
-                    category = row.get("Category", "Other").strip()
-                    if name and name not in seen_products:
-                        products.append(Product(name=name, category=category))
-                        seen_products.add(name)
-        except FileNotFoundError:
-            pass
-
-        return products
+        return self._get_products_sqlite()
 
     def _get_products_sqlite(self) -> List[Product]:
         """Get products from SQLite."""
@@ -259,26 +93,7 @@ class DatabaseManager:
 
     def get_product_urls(self, product_name: str) -> List[URLEntry]:
         """Get URLs for a specific product."""
-        if self.config.database_type == "csv":
-            return self._get_product_urls_csv(product_name)
-        else:
-            return self._get_product_urls_sqlite(product_name)
-
-    def _get_product_urls_csv(self, product_name: str) -> List[URLEntry]:
-        """Get product URLs from CSV."""
-        urls = []
-        try:
-            with open(self.config.csv_products_path, "r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    if row.get("Product_Name", "").strip() == product_name:
-                        url = row.get("URL", "").strip()
-                        if url:
-                            urls.append(URLEntry(url=url, site_name=self._extract_site_name(url)))
-        except FileNotFoundError:
-            pass
-
-        return urls
+        return self._get_product_urls_sqlite(product_name)
 
     def _get_product_urls_sqlite(self, product_name: str) -> List[URLEntry]:
         """Get product URLs from SQLite."""
@@ -322,79 +137,16 @@ class DatabaseManager:
         is_prime_eligible: bool = False,
     ) -> bool:
         """Add a price entry."""
-        if self.config.database_type == "csv":
-            return self._add_price_entry_csv(
-                product_name,
-                url,
-                price,
-                scraped_at,
-                vendor_name,
-                vendor_url,
-                is_marketplace,
-                is_prime_eligible,
-            )
-        else:
-            return self._add_price_entry_sqlite(
-                product_name,
-                url,
-                price,
-                scraped_at,
-                vendor_name,
-                vendor_url,
-                is_marketplace,
-                is_prime_eligible,
-            )
-
-    def _add_price_entry_csv(
-        self,
-        product_name: str,
-        url: str,
-        price: float,
-        scraped_at: Optional[datetime] = None,
-        vendor_name: Optional[str] = None,
-        vendor_url: Optional[str] = None,
-        is_marketplace: bool = False,
-        is_prime_eligible: bool = False,
-    ) -> bool:
-        """Add price entry to CSV."""
-        if scraped_at is None:
-            scraped_at = datetime.now()
-
-        row_dict = {
-            "Date": scraped_at.strftime("%Y-%m-%d"),
-            "Product_Name": product_name,
-            "URL": url,
-            "Price": price,
-            "Timestamp_ISO": scraped_at.isoformat(),
-        }
-
-        # Add vendor information if available
-        if vendor_name:
-            row_dict["Vendor_Name"] = vendor_name
-        if vendor_url:
-            row_dict["Vendor_URL"] = vendor_url
-        if is_marketplace:
-            row_dict["Is_Marketplace"] = is_marketplace
-        if is_prime_eligible:
-            row_dict["Is_Prime_Eligible"] = is_prime_eligible
-
-        # Read existing data
-        existing_data = []
-        try:
-            existing_data = pd.read_csv(self.config.csv_history_path, encoding="utf-8").to_dict(
-                "records"
-            )
-        except FileNotFoundError:
-            pass
-
-        # Add new row
-        existing_data.append(row_dict)
-
-        # Save back to CSV
-        df = pd.DataFrame(existing_data)
-        df.to_csv(self.config.csv_history_path, index=False, encoding="utf-8")
-
-        return True
+        return self._add_price_entry_sqlite(
+            product_name,
+            url,
+            price,
+            scraped_at,
+            vendor_name,
+            vendor_url,
+            is_marketplace,
+            is_prime_eligible,
+        )
 
     def _add_price_entry_sqlite(
         self,
@@ -447,20 +199,7 @@ class DatabaseManager:
 
     def get_price_history(self, product_name: Optional[str] = None) -> pd.DataFrame:
         """Get price history, optionally filtered by product."""
-        if self.config.database_type == "csv":
-            return self._get_price_history_csv(product_name)
-        else:
-            return self._get_price_history_sqlite(product_name)
-
-    def _get_price_history_csv(self, product_name: Optional[str] = None) -> pd.DataFrame:
-        """Get price history from CSV."""
-        try:
-            df = pd.read_csv(self.config.csv_history_path, encoding="utf-8")
-            if product_name:
-                df = df[df["Product_Name"] == product_name]
-            return df
-        except FileNotFoundError:
-            return pd.DataFrame(columns=["Date", "Product_Name", "URL", "Price", "Timestamp_ISO"])
+        return self._get_price_history_sqlite(product_name)
 
     def _get_price_history_sqlite(self, product_name: Optional[str] = None) -> pd.DataFrame:
         """Get price history from SQLite."""
@@ -498,9 +237,6 @@ class DatabaseManager:
     # Caching methods (SQLite only)
     def is_url_cached(self, url: str) -> bool:
         """Check if URL is cached and still valid."""
-        if self.config.database_type != "sqlite":
-            return False
-
         with self._get_connection() as conn:
             result = conn.execute(
                 """SELECT last_scraped, cache_duration_hours, status, next_retry
@@ -528,9 +264,6 @@ class DatabaseManager:
 
     def update_cache(self, url: str, success: bool = True, next_retry: Optional[datetime] = None):
         """Update cache entry for URL."""
-        if self.config.database_type != "sqlite":
-            return
-
         with self._get_connection() as conn:
             # Get existing cache entry
             existing = conn.execute("SELECT attempts FROM cache WHERE url = ?", (url,)).fetchone()
@@ -565,51 +298,7 @@ class DatabaseManager:
 
     def get_products_needing_scrape(self, max_age_hours: int = 48) -> List[Tuple[str, str]]:
         """Get products that need scraping (no entries in last N hours)."""
-        if self.config.database_type == "csv":
-            return self._get_products_needing_scrape_csv(max_age_hours)
-        else:
-            return self._get_products_needing_scrape_sqlite(max_age_hours)
-
-    def _get_products_needing_scrape_csv(self, max_age_hours: int) -> List[Tuple[str, str]]:
-        """Get products needing scrape from CSV."""
-        cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
-
-        # Get all products
-        all_products = set()
-        try:
-            with open(self.config.csv_products_path, "r", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
-                for row in reader:
-                    name = row.get("Product_Name", "").strip()
-                    url = row.get("URL", "").strip()
-                    if name and url:
-                        all_products.add((name, url))
-        except FileNotFoundError:
-            return []
-
-        # Get recently scraped products
-        recently_scraped = set()
-        try:
-            df = pd.read_csv(self.config.csv_history_path, encoding="utf-8")
-            for _, row in df.iterrows():
-                scraped_at = None
-                if not pd.isna(row.get("Timestamp_ISO")):
-                    try:
-                        scraped_at = datetime.fromisoformat(
-                            row["Timestamp_ISO"].replace("Z", "+00:00")
-                        )
-                    except:
-                        pass
-
-                if scraped_at and scraped_at > cutoff_time:
-                    name = row.get("Product_Name", "").strip()
-                    url = row.get("URL", "").strip()
-                    if name and url:
-                        recently_scraped.add((name, url))
-        except FileNotFoundError:
-            pass
-
-        return list(all_products - recently_scraped)
+        return self._get_products_needing_scrape_sqlite(max_age_hours)
 
     def _get_products_needing_scrape_sqlite(self, max_age_hours: int) -> List[Tuple[str, str]]:
         """Get products needing scrape from SQLite."""
@@ -635,43 +324,8 @@ class DatabaseManager:
             return [(row["name"], row["url"]) for row in rows]
 
     # Export methods for backward compatibility
-    def export_to_csv(self):
-        """Export SQLite data to CSV files for backward compatibility."""
-        if self.config.database_type != "sqlite":
-            self.logger.warning("export_to_csv called but database_type is not sqlite")
-            return
-
-        # Export products
-        products = []
-        with self._get_connection() as conn:
-            rows = conn.execute(
-                """
-                SELECT p.name, p.category, u.url
-                FROM products p
-                JOIN urls u ON p.id = u.product_id
-                WHERE u.active = 1
-                ORDER BY p.name, u.site_name
-            """
-            ).fetchall()
-
-            for row in rows:
-                products.append(
-                    {
-                        "URL": row["url"],
-                        "Product_Name": row["name"],
-                        "Category": row["category"],
-                    }
-                )
-
-        # Save products CSV
-        df_products = pd.DataFrame(products)
-        df_products.to_csv(self.config.csv_products_path, index=False, encoding="utf-8")
-
-        # Export price history
-        df_history = self.get_price_history()
-        df_history.to_csv(self.config.csv_history_path, index=False, encoding="utf-8")
-
-        self.logger.info("Data exported to CSV files")
+    def export_to_csv(self):  # Legacy no-op
+        self.logger.info("export_to_csv called - CSV support removed (no-op)")
 
     # Product issues tracking methods
     def log_product_issue(
@@ -685,9 +339,6 @@ class DatabaseManager:
         http_status_code: int = None,
     ):
         """Log a product issue to the database."""
-        if self.config.database_type != "sqlite":
-            return  # Only available for SQLite
-
         with self._get_connection() as conn:
             conn.execute(
                 """
@@ -710,9 +361,6 @@ class DatabaseManager:
 
     def get_product_issues(self, resolved: bool = None) -> List[dict]:
         """Get product issues from the database."""
-        if self.config.database_type != "sqlite":
-            return []
-
         with self._get_connection() as conn:
             if resolved is None:
                 query = """
@@ -736,9 +384,6 @@ class DatabaseManager:
 
     def resolve_product_issue(self, issue_id: int):
         """Mark a product issue as resolved."""
-        if self.config.database_type != "sqlite":
-            return
-
         with self._get_connection() as conn:
             conn.execute("UPDATE product_issues SET resolved = 1 WHERE id = ?", (issue_id,))
 
@@ -746,9 +391,6 @@ class DatabaseManager:
 
     def get_product_by_url(self, url: str) -> Optional[Product]:
         """Get product information by URL."""
-        if self.config.database_type != "sqlite":
-            return None
-
         with self._get_connection() as conn:
             row = conn.execute(
                 """
@@ -776,9 +418,6 @@ class DatabaseManager:
 
     def deactivate_product_url(self, url: str, reason: str = "problematic"):
         """Deactivate a specific URL due to issues."""
-        if self.config.database_type != "sqlite":
-            return
-
         with self._get_connection() as conn:
             result = conn.execute("UPDATE urls SET active = 0 WHERE url = ?", (url,))
             if result.rowcount > 0:
@@ -823,9 +462,6 @@ class DatabaseManager:
 
     def auto_handle_critical_issues(self, auto_remove: bool = True):
         """Automatically handle critical product issues."""
-        if self.config.database_type != "sqlite":
-            return
-
         issues = self.get_product_issues(resolved=False)
         critical_issues = [i for i in issues if i["issue_type"] in ["404_error", "name_mismatch"]]
 
