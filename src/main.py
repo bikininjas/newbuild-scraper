@@ -6,7 +6,22 @@ import logging
 import argparse
 from pathlib import Path
 from utils import setup_logging  # From utils package
-from scraper import get_price_requests, get_price_playwright
+
+# Dynamic import of scraping functions from top-level scraper.py (not a package export)
+import importlib.util as _ilu, sys as _sys
+
+if "src" not in _sys.path:
+    _sys.path.insert(0, "src")
+# Attempt to import functions from root-level scraper.py (not the package directory)
+try:
+    _spec = _ilu.spec_from_file_location("scraper_root", "src/scraper.py")
+    _scraper_root = _ilu.module_from_spec(_spec)
+    assert _spec and _spec.loader
+    _spec.loader.exec_module(_scraper_root)
+    get_price_requests = getattr(_scraper_root, "get_price_requests")
+    get_price_playwright = getattr(_scraper_root, "get_price_playwright")
+except Exception as _e:  # pragma: no cover
+    raise ImportError(f"Unable to load scraping functions from scraper.py: {_e}")
 from sites.config import get_site_selector
 from alerts import send_discord_alert
 from generate_html import generate_html
@@ -304,6 +319,11 @@ def main():
         action="store_true",
         help="Ignore cache and scrape all URLs (overrides --new-products-only).",
     )
+    parser.add_argument(
+        "--html-only",
+        action="store_true",
+        help="Skip scraping; generate HTML from existing database history only.",
+    )
     args = parser.parse_args()
 
     # Setup database
@@ -327,8 +347,43 @@ def main():
 
     import_products_if_any()
 
+    if args.html_only:
+        logging.info("--html-only: skipping scraping and using existing history")
+        history = db_manager.get_price_history()
+        if history is None or history.empty:
+            logging.warning("No history available; generated HTML may be empty")
+        # Build product prices from latest entries per product+URL
+        product_prices = {}
+        if history is not None and not history.empty:
+            ts_col = None
+            for c in ["Timestamp_ISO", "Date", "timestamp"]:
+                if c in history.columns:
+                    ts_col = c
+                    break
+            if ts_col is None:
+                ts_col = (
+                    "Timestamp_ISO" if "Timestamp_ISO" in history.columns else history.columns[0]
+                )
+            # Ensure ordering so last row is most recent
+            if ts_col in history.columns:
+                history_sorted = history.sort_values(by=ts_col)
+            else:
+                history_sorted = history
+            for (pname, url), g in history_sorted.groupby(["Product_Name", "URL"]):
+                last = g.iloc[-1]
+                product_prices.setdefault(pname, []).append({"url": url, "price": last["Price"]})
+        # Products metadata
+        products_meta = {}
+        for product in db_manager.get_products():
+            urls = [u.url for u in db_manager.get_product_urls(product.name)]
+            products_meta[product.name] = {"category": product.category, "urls": urls}
+        if not args.no_html:
+            generate_html(product_prices, history, mode=args.html_mode, products_meta=products_meta)
+        logging.info("HTML-only generation completed")
+        return
+
+    # Standard scrape flow
     # Get products to scrape
-    # If force-all, override selective flags
     if args.force_all:
         args.new_products_only = False
         logging.info("--force-all specified: scraping every product URL (ignoring cache)")
@@ -336,12 +391,7 @@ def main():
     if products is None:
         return
 
-    # Get price history for HTML generation
-    history = db_manager.get_price_history()
-
-    # Scrape products
     if args.force_all and db_config.database_type == "sqlite":
-        # Temporarily disable cache check by monkey-patching is_url_cached
         original_is_cached = db_manager.is_url_cached
         db_manager.is_url_cached = lambda url: False
         product_prices, updated_rows = scrape_products(products, args, db_manager, db_config)
@@ -349,20 +399,15 @@ def main():
     else:
         product_prices, updated_rows = scrape_products(products, args, db_manager, db_config)
 
-    # Generate HTML report
-    def maybe_generate_html():
-        if args.no_html:
-            return
+    save_scraping_results(updated_rows, db_manager, db_config)
+    history = db_manager.get_price_history()
+
+    if not args.no_html:
         products_meta = {}
         for product in db_manager.get_products():
             urls = [u.url for u in db_manager.get_product_urls(product.name)]
             products_meta[product.name] = {"category": product.category, "urls": urls}
         generate_html(product_prices, history, mode=args.html_mode, products_meta=products_meta)
-
-    maybe_generate_html()
-
-    # Save results to database
-    save_scraping_results(updated_rows, db_manager, db_config)
 
     logging.info("Scraping completed successfully")
 

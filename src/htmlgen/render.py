@@ -89,6 +89,30 @@ def render_component_switch_js():
         computeTotal();
     }}
 
+    // Choose cheapest option for every category to minimize total
+    function optimizeBuild() {{
+        var selections = {{}};
+        try {{ selections = JSON.parse(localStorage.getItem('componentSelections') || '{{}}'); }} catch(e) {{ selections = {{}}; }}
+        document.querySelectorAll('select[data-category]').forEach(function(sel) {{
+            var cheapestIndex = -1; var cheapest = Infinity;
+            for (var i=0;i<sel.options.length;i++) {{
+                var opt = sel.options[i];
+                var p = parseFloat(opt.dataset.price);
+                if (!isNaN(p) && p < cheapest) {{ cheapest = p; cheapestIndex = i; }}
+            }}
+            if (cheapestIndex >= 0) {{
+                sel.selectedIndex = cheapestIndex;
+                var cat = sel.getAttribute('data-category');
+                selections[cat] = sel.options[cheapestIndex].value;
+                switchComponent(cat, sel); // will recompute total
+            }}
+        }});
+        try {{ localStorage.setItem('componentSelections', JSON.stringify(selections)); }} catch(e) {{}}
+        computeTotal();
+    }}
+
+    window.optimizeBuild = optimizeBuild;
+
     document.addEventListener('DOMContentLoaded', function() {{
         // Apply stored selections without reloading
         var selections = {{}};
@@ -229,6 +253,12 @@ def render_summary_table(category_products, history, selected_products=None, deb
     html = []
     html.append(render_component_switch_js())
     # We'll compute the total at the end using compute_summary_total
+    html.append(
+        '<div class="mb-4 flex flex-wrap gap-3 items-center">'
+        '<button onclick="optimizeBuild()" class="px-5 py-2 rounded-lg bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white text-sm font-semibold shadow transition-all">⚡ Optimiser (prix le plus bas)</button>'
+        '<span class="text-xs text-slate-400">Sélectionne automatiquement l\'option la moins chère de chaque catégorie (hors catégories exclues du total).</span>'
+        "</div>"
+    )
     html.append('<div class="overflow-x-auto mb-10">')
     html.append(
         '<table id="summary-table" class="min-w-full glass-card rounded-xl shadow-2xl border border-slate-600 overflow-hidden">'

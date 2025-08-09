@@ -77,11 +77,21 @@ def build_min_series(category_best: Dict[str, Dict], history: pd.DataFrame):
         prices: List[float] = []
         ts_labels: List[str] = []
         for ts, group in ph.groupby(ts_col):
-            vals = [
-                float(normalize_price(r.Price, name))
-                for _, r in group.iterrows()
-                if 0 < float(normalize_price(r.Price, name)) < 5000
-            ]
+            vals = []
+            for _, r in group.iterrows():
+                raw = r.Price
+                # Strip common currency formatting
+                if isinstance(raw, str):
+                    cleaned = raw.replace("€", "").replace(",", ".").replace(" ", "").strip()
+                else:
+                    cleaned = raw
+                try:
+                    norm = normalize_price(cleaned, name)
+                    fval = float(norm)
+                    if 0 < fval < 5000:
+                        vals.append(fval)
+                except Exception:  # pragma: no cover
+                    continue
             if vals:
                 prices.append(min(vals))
                 ts_labels.append(ts)

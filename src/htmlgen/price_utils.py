@@ -21,7 +21,15 @@ def compute_summary_total(category_products, selections=None) -> float:
             continue
         selected_name = selections.get(cat) if selections else products[0]["name"]
         selected = next((p for p in products if p["name"] == selected_name), products[0])
-        price = float(selected["price"])
+        raw_price = selected.get("price")
+        if isinstance(raw_price, (int, float)):
+            price = float(raw_price)
+        else:
+            s = str(raw_price).replace("€", "").replace(",", ".").replace(" ", "").strip()
+            try:
+                price = float(s)
+            except Exception:  # pragma: no cover - fallback
+                continue  # skip unparsable price
         if cat not in EXCLUDED_CATEGORIES:
             total += price
     return round(total, 2)
