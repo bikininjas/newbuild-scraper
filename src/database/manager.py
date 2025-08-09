@@ -17,9 +17,8 @@ class DatabaseManager:
     def __init__(self, config: Optional[DatabaseConfig] = None):
         self.config = config or DatabaseConfig()
         self.logger = logging.getLogger(__name__)
-
-    # Initialize database immediately
-    self._init_sqlite()
+        # Initialize database immediately
+        self._init_sqlite()
 
     def _init_sqlite(self):
         """Initialize SQLite database and create tables."""

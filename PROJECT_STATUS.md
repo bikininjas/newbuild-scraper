@@ -50,7 +50,7 @@ The goal of this project is to build a Python-based price tracker and HTML repor
 
 **TopAchat URL Format:**
 Use full canonical TopAchat URLs inside each product's `urls` list in `products.json`, e.g.:
-https://www.topachat.com/pages/detail2_cat_est_micro_puis_rubrique_est_w_ssd_puis_ref_est_in20023645.html
+<https://www.topachat.com/pages/detail2_cat_est_micro_puis_rubrique_est_w_ssd_puis_ref_est_in20023645.html>
 
 **JSON Workflow:**
 1. (Optional) Backup DB: `cp data/scraper.db data/scraper_backup_$(date +%Y%m%d).db`
