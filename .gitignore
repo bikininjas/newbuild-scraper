@@ -3,11 +3,9 @@ __pycache__/
 *.py[codz]
 *$py.class
 
-# Test, debug, and check scripts
-test_*.py
+# Test, debug, and check scripts (track tests, still ignore debug & check helpers)
 debug_*.py
 check_*.py
-tests/
 scraper.log
 .pytest_cache/
 .venv/

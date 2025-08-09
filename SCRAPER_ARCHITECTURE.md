@@ -33,18 +33,38 @@ This project follows a modular architecture designed for scalability, maintainab
 - **Marketplace Detection**: Distinguishes between marketplace sellers and direct vendor sales
 - **Prime Eligibility**: Tracks Amazon Prime eligibility for enhanced purchasing decisions
 
-### `/src/database/`
-- **Purpose**: Database management and schema handling
+### `/src/database/` (Legacy Shim)
+
+- **Purpose**: Backwards compatibility only. Provides a lazy shim exposing `DatabaseManager` for older imports.
 - **Components**:
-  - `models.py` - **ENHANCED** - Database models with vendor information fields
-  - `manager.py` - Database operations with vendor data support
-  - `config.py` - Database configuration and connection management
+  - `models.py` - **ENHANCED** - Database models (products, urls, price_history with vendor fields, cache, product_issues)
+  - `config.py` - Database configuration (currently forces SQLite)
+  - `__init__.py` - Shim that emits a one‑time deprecation warning; new code must import `DatabaseManager` from `scraper.persistence.sqlite`.
+
+### `/src/scraper/persistence/`
+
+- **Purpose**: New persistence layer (Phase 3 refactor) decoupling higher layers from raw SQL.
+- **Components**:
+  - `sqlite.py` - `DatabaseManager` implementation (migrated from legacy `database.manager` which has been removed)
+  - `repositories.py` - Intention‑revealing thin wrappers (e.g. `record_price`, `log_issue`, `products_needing_scrape`) used by scraping & HTML layers.
+
+### Layering
+
+```text
+products.json -> scraper.catalog.loader -> repositories -> persistence.sqlite.DatabaseManager -> SQLite
+scraper / sites -> repositories (migrating; some direct calls remain temporarily)
+html generation -> DatabaseManager (to be migrated gradually)
+```
+
+The repositories layer enables future alternative backends and simplifies unit testing.
 
 ### `products.json`
-- **Purpose**: Canonical product declaration file (versioned)
-- **Notes**: Imported non-destructively at runtime (adds new products/URLs; does not delete)
+
+- **Purpose**: Canonical product declaration file (versioned). Replaces legacy CSV inputs.
+- **Import Semantics**: Non-destructive sync (adds new products/URLs; never deletes existing DB rows to preserve history).
 
 ### `/src/antibot/`
+
 - **Purpose**: Anti-detection and stealth browsing
 - **Components**:
   - `detection.py` - Bot detection avoidance
@@ -52,6 +72,7 @@ This project follows a modular architecture designed for scalability, maintainab
   - `stealth.js` - JavaScript stealth injection
 
 ### `/src/htmlgen/`
+
 - **Purpose**: HTML report generation with vendor-aware displays
 - **Components**:
   - `render.py` - **ENHANCED** - HTML template rendering with vendor information
@@ -62,6 +83,7 @@ This project follows a modular architecture designed for scalability, maintainab
   - `constants.py` - UI constants and styling
 
 ### `/src/utils/`
+
 - **Purpose**: Shared utility functions
 - **Components**:
   - `__init__.py` - Core utilities (price cleaning, formatting)
@@ -78,20 +100,26 @@ This project follows a modular architecture designed for scalability, maintainab
 ## Key Design Patterns
 
 ### Site Handler Pattern
+
 Each site implements a consistent interface:
+
 ```python
 def scrape_site_name(url, product_name):
-    # Returns (price, availability, timestamp)
+  # Returns (price, availability, timestamp)
 ```
 
 ### Price Normalization
+
 Centralized price cleaning handles multiple formats:
+
 - European format: "579,95 €"
-- French format with superscript: "579€<sup>95</sup>"
+- French format with superscript: "579€(95)"  <!-- simplified to avoid inline HTML -->
 - Simple format: "579.95"
 
 ### Stealth Architecture
+
 Multi-layered anti-detection:
+
 - Browser fingerprint randomization
 - JavaScript stealth injection
 - User agent rotation
@@ -100,12 +128,14 @@ Multi-layered anti-detection:
 ## Extension Points
 
 ### Adding New Sites
+
 1. Create new module in `/src/sites/`
 2. Implement scraping function following established pattern
 3. Add site configuration to `config.py`
 4. Update main orchestration logic
 
 ### Adding New Features
+
 - HTML generation: Extend `/src/htmlgen/` modules
 - Alert systems: Modify alert logic in main.py
 - Data processing: Add utilities to `/src/utils/`

@@ -69,3 +69,12 @@ def log_issue(
 
 def product_by_url(db: DatabaseManager, url: str):
     return db.get_product_by_url(url)
+
+
+# Scrape planning
+def products_needing_scrape(db: DatabaseManager, max_age_hours: int = 48) -> List[Tuple[str, str]]:
+    """Return list of (product_name, url) pairs requiring a new scrape.
+
+    Delegates to DatabaseManager.get_products_needing_scrape.
+    """
+    return db.get_products_needing_scrape(max_age_hours=max_age_hours)

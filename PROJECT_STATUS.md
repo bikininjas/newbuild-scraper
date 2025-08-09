@@ -114,15 +114,17 @@ Use full canonical TopAchat URLs inside each product's `urls` list in `products.
 
 ## Current Branch Status
 
-**Branch:** `alternative_components` (with Idealo vendor extraction enhancements)
-**Latest Changes (January 2025):**
+**Branch:** `chore/clean_code` (persistence refactor & cleanup)
+**Latest Changes (August 2025):**
 
 - **✅ Advanced Idealo Integration**: Multi-strategy vendor extraction with redirect following and marketplace detection
 - **✅ Enhanced Database Schema**: Added vendor information fields with marketplace and Prime eligibility tracking
-- **✅ Product Management System**: Automated CSV-to-SQLite loading with template system for easy product addition
-- **✅ Production Organization**: Removed test files, enhanced documentation, integrated workflows
+- **✅ Product Management System**: JSON-based product declaration & non-destructive sync (legacy CSV removed)
+- **✅ Persistence Layer Refactor**: Introduced `scraper.persistence` package (sqlite manager + repositories) and deprecated legacy `database.manager` via shim with warning
+- **✅ Repository Adoption (Partial)**: Core scraper modules beginning to use repository helpers (`log_issue`, `product_by_url`, `products_needing_scrape`)
+- **✅ Production Organization**: Removed test CSV artifacts, enhanced documentation, integrated workflows
 - **✅ Cookie Consent Framework**: Comprehensive handling for Idealo, Amazon, Corsair, and vendor-specific dialogs
-- **✅ Project Documentation**: Updated all markdown files with technical architecture and usage instructions
+- **✅ Documentation Updates**: Architecture & status docs updated to reflect persistence layering
 
 ## Prompt for Next AI Agent
 
@@ -154,6 +156,7 @@ You are an AI developer working on the `newbuild-scraper` project. This project 
 - Maintain documentation as features evolve
 
 **Current Technical State:**
+
 - Database: SQLite with enhanced schema supporting vendor details
 - Product Loading: Automated CSV-to-SQLite with duplicate detection
 - Vendor Extraction: 4-strategy system with 90%+ success rate
@@ -175,7 +178,15 @@ You are an AI developer working on the `newbuild-scraper` project. This project 
 
 **Technical Stack**: Python, Playwright, Chart.js, Tailwind CSS, GitHub Actions, Google Cloud Storage
 
-**Status**: ✅ **COMPLETE & PRODUCTION-READY**
+**Status**: ✅ **PRODUCTION-READY (Persistence migration in stabilization phase)**
+
+### Pending (Planned Next Steps)
+
+- Add minimal unit tests for repositories (price record, issue auto-handle, cache backoff)
+- Migrate remaining direct `DatabaseManager` usages (HTML generation) to repositories where sensible
+- Potential `ProductIssue` dataclass and standardized return types
+- Complexity reduction in large site scraping functions (Idealo) post-test coverage
+- Define removal timeline for legacy shim (`database.DatabaseManager`)
 
 ---
 
