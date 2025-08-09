@@ -5,3 +5,11 @@ repos:
       - id: black
         args: ["--line-length", "100"]
         language_version: python3.12
+  - repo: local
+    hooks:
+      - id: validate-products-json
+        name: Validate products.json
+        entry: python scripts/validate_products_json.py
+        language: system
+        pass_filenames: false
+        files: ^products\.json$

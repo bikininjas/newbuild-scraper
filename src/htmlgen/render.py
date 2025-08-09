@@ -321,20 +321,26 @@ def _render_history_list(history_entries: pd.DataFrame, name: str) -> str:
     return '<ul class="text-sm text-slate-400 space-y-3">' + "".join(lis) + "</ul>"
 
 
-def render_product_cards(product_prices, history, product_min_prices):
-    from .data import load_products
+def render_product_cards(product_prices, history, product_min_prices, products_meta=None):
+    """Render product cards.
+
+    products_meta: optional mapping name -> {category: str}
+    If not provided, categories will default to 'Other'.
+    """
 
     DIV_END = "</div>"
     html = []
     html.append('<div class="grid gap-8">')
 
-    # Load products data to get categories
-    products_data = load_products("produits.csv")
+    products_data = products_meta or {}
 
     for name, entries in product_prices.items():
         # Get category for this product
-        product_data = products_data.get(name, {})
-        category = product_data.get("category", "Other")
+        if products_data:
+            product_data = products_data.get(name, {})
+            category = product_data.get("category", "Other")
+        else:
+            category = "Other"
 
         min_price_data = product_min_prices.get(name, {"timestamps": [], "prices": []})
         best = min(entries, key=lambda x: float(x["price"]))

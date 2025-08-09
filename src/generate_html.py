@@ -1,4 +1,4 @@
-from htmlgen.data import load_products, load_history
+from htmlgen.data import load_history
 from htmlgen.normalize import normalize_price, get_category, get_site_label
 from htmlgen.render import render_summary_table, render_product_cards
 from htmlgen.graph import render_all_price_graphs
@@ -9,7 +9,7 @@ import os
 import json
 
 
-PRODUCTS_CSV = "produits.csv"
+# PRODUCTS_CSV legacy removed (JSON + DB now authoritative)
 
 
 def get_database_manager():
@@ -38,24 +38,17 @@ def normalize_and_filter_prices(entries, name):
 
 def get_category_best(product_prices):
     category_best = {}
-
-    # Try to get products from database first, fallback to CSV
+    products_data = {}
     try:
-        db_manager, db_config = get_database_manager()
-        if db_config.database_type == "sqlite":
-            products_list = db_manager.get_products()
-            products_data = {}
-            for product in products_list:
-                urls = db_manager.get_product_urls(product.name)
-                products_data[product.name] = {
-                    "category": product.category,
-                    "urls": [url.url for url in urls],
-                }
-        else:
-            products_data = load_products(PRODUCTS_CSV)
+        db_manager, _ = get_database_manager()
+        for product in db_manager.get_products():
+            urls = db_manager.get_product_urls(product.name)
+            products_data[product.name] = {
+                "category": product.category,
+                "urls": [u.url for u in urls],
+            }
     except Exception:
-        # Fallback to CSV
-        products_data = load_products(PRODUCTS_CSV)
+        products_data = {}
 
     for name, entries in product_prices.items():
         valid_entries = normalize_and_filter_prices(entries, name)
@@ -286,8 +279,20 @@ def _render_html(category_products, history, product_prices, product_min_prices,
         f"</script></div>",
     ]
     html.append(render_summary_table(category_products, history))
+    # Build name->category map for cards
+    name_category = {}
+    for cat, plist in category_products.items():
+        for p in plist:
+            name_category[p["name"]] = {"category": cat}
     # Call render_product_cards - historical prices are now toggleable with buttons
-    html.append(render_product_cards(product_prices, history, product_min_prices))
+    html.append(
+        render_product_cards(
+            product_prices,
+            history,
+            product_min_prices,
+            products_meta=name_category,
+        )
+    )
 
     # Inline JavaScript for toggle functionality to keep a single self-contained HTML
     html.append(
@@ -377,27 +382,19 @@ def build_product_prices(products, history):
 
 
 def _build_category_products_with_explicit_categories(product_prices):
-    """Build category_products with explicit categories from CSV, removing duplicates."""
+    """Build category_products with a placeholder category 'Other'.
+    Real categories are applied via get_category_best + downstream mapping.
+    """
     from collections import defaultdict
 
     category_products = defaultdict(list)
-    # Load products data again to get explicit categories
-    products_data = load_products(PRODUCTS_CSV)
-
     for name, entries in product_prices.items():
-        # Get the explicit category from CSV
-        product_data = products_data.get(name, {})
-        cat = product_data.get("category", "Other")
-
         for entry in entries:
-            category_products[cat].append(
+            category_products["Other"].append(
                 {"name": name, "price": entry["price"], "url": entry["url"]}
             )
-
-    # Sort each category's products by price ascending (cheapest first)
     for cat in category_products:
         category_products[cat].sort(key=lambda x: float(x["price"]))
-
     return category_products
 
 
@@ -441,9 +438,20 @@ def generate_html(product_prices, history):
 
 
 def main():
-    """Main function to orchestrate HTML generation from scraped data."""
-    products = load_products(PRODUCTS_CSV)
-    history = load_history("historique_prix.csv")
+    """Main function to orchestrate HTML generation from scraped data.
+    Uses products from DB only (JSON import happens earlier in main scraper)."""
+    # Reconstruct product_prices from DB + latest exported history CSV if exists
+    db_manager, _ = get_database_manager()
+    history = (
+        load_history("historique_prix.csv")
+        if Path("historique_prix.csv").exists()
+        else db_manager.get_price_history()
+    )
+    # Build mapping name->urls from DB
+    products = {}
+    for product in db_manager.get_products():
+        urls = [u.url for u in db_manager.get_product_urls(product.name)]
+        products[product.name] = {"urls": urls, "category": product.category}
     product_prices = build_product_prices(products, history)
     generate_html(product_prices, history)
 
