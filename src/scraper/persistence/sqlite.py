@@ -7,7 +7,8 @@ from contextlib import contextmanager
 from typing import Optional, List, Tuple
 import pandas as pd
 
-from database.config import DatabaseConfig
+from database.config import DatabaseConfig  # uses config only (no DatabaseManager)
+from database import models as _models  # avoid importing DatabaseManager from shim
 from database.models import Product, PriceHistory, URLEntry, CacheEntry, CREATE_TABLES_SQL
 
 
