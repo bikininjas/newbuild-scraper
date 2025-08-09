@@ -10,7 +10,8 @@ from scraper import get_price_requests, get_price_playwright
 from sites.config import get_site_selector
 from alerts import send_discord_alert
 from generate_html import generate_html
-from database import DatabaseManager, DatabaseConfig
+from scraper.persistence.sqlite import DatabaseManager
+from database import DatabaseConfig  # keep config from legacy package
 from scraper.catalog import import_from_json, ProductValidationError
 
 # Default domains for which debug logging is enabled

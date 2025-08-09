@@ -1,9 +1,11 @@
-"""
-Database module for the price scraper.
-Handles both SQLite and CSV backends with automatic migration.
+"""Legacy database package.
+
+Deprecated: DatabaseManager now lives in scraper.persistence.sqlite.
+This module re-exports it for backward compatibility. New code should
+import from `scraper.persistence.sqlite` instead of `database`.
 """
 
-from .manager import DatabaseManager
+from scraper.persistence.sqlite import DatabaseManager  # type: ignore F401
 from .models import Product, PriceHistory, URLEntry, CacheEntry
 from .config import DatabaseConfig
 

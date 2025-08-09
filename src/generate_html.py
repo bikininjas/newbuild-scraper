@@ -3,7 +3,8 @@ from scraper.html.normalize import normalize_price, get_category, get_site_label
 from scraper.html.render import render_summary_table, render_product_cards
 from scraper.html.graph import render_all_price_graphs
 from utils import format_french_date
-from database import DatabaseManager, DatabaseConfig
+from scraper.persistence.sqlite import DatabaseManager
+from database import DatabaseConfig
 from pathlib import Path
 import os
 import json
