@@ -135,9 +135,23 @@ def _find_best_seen_date(history: pd.DataFrame, name: str, url: str, price: floa
 
 def _render_select_for_products(cat: str, products: list, selected_name: str) -> str:
     options = []
+    seen_names = set()
     for p in products:
+        name_val = p.get("name")
+        # Skip if we've already added this product name (collapse multi-vendor duplicates)
+        if name_val in seen_names:
+            continue
+        seen_names.add(name_val)
         sel = " selected" if p["name"] == selected_name else ""
-        price = float(p["price"]) if isinstance(p["price"], (int, float, str)) else p["price"]
+        raw_price = p.get("price")
+        if isinstance(raw_price, (int, float)):
+            price = float(raw_price)
+        else:
+            s = str(raw_price).replace("€", "").replace(",", ".").replace(" ", "").strip()
+            try:
+                price = float(s)
+            except Exception:
+                price = float("nan")
         # HTML escape user data to prevent XSS
         escaped_name = html.escape(str(p["name"]))
         escaped_url = html.escape(str(p["url"]))
@@ -168,13 +182,32 @@ def _render_summary_row(
     td_date: str,
 ) -> str:
     name = selected["name"]
-    price = float(selected["price"])
+    # Robust float conversion (prices may carry euro sign or spacing)
+    s_price = selected.get("price")
+    if isinstance(s_price, (int, float)):
+        price = float(s_price)
+    else:
+        sp = str(s_price).replace("€", "").replace(",", ".").replace(" ", "").strip()
+        try:
+            price = float(sp)
+        except Exception:
+            price = float("nan")
     url = selected["url"]
     best_seen = _find_best_seen_date(history, name, url, price)
     # Build enriched options with date and site for client-side switching
     enriched_products = []
     for p in products:
-        p_best_seen = _find_best_seen_date(history, p["name"], p["url"], float(p["price"]))
+        # Safe float for best_seen lookup
+        rp = p.get("price")
+        if isinstance(rp, (int, float)):
+            fp = float(rp)
+        else:
+            rs = str(rp).replace("€", "").replace(",", ".").replace(" ", "").strip()
+            try:
+                fp = float(rs)
+            except Exception:
+                fp = float("nan")
+        p_best_seen = _find_best_seen_date(history, p["name"], p["url"], fp)
         enriched = dict(p)
         enriched["best_seen"] = p_best_seen
         enriched["site_label"] = get_site_label(p["url"])
@@ -276,6 +309,70 @@ def render_summary_table(category_products, history, selected_products=None, deb
     return "\n".join(html)
 
 
+def render_upgrade_kits_table(kit_names, product_prices, history):
+    """Render a dedicated table listing each Upgrade Kit (one row per kit, no total).
+
+    kit_names: iterable of product names classified as "Upgrade Kit".
+    product_prices: mapping name -> list[{price, url}]
+    history: full price history DataFrame
+    """
+    kits = [k for k in kit_names if k in product_prices]
+    if not kits:
+        return ""
+    rows = []
+    for name in kits:
+        entries = product_prices.get(name, [])
+        if not entries:
+            continue
+
+        # Pick best (lowest) entry
+        def _p2f(v):
+            if isinstance(v, (int, float)):
+                return float(v)
+            if isinstance(v, str):
+                s = v.replace("€", "").replace(",", ".").replace(" ", "").strip()
+                try:
+                    return float(s)
+                except Exception:
+                    return float("inf")
+            return float("inf")
+
+        best = min(entries, key=lambda x: _p2f(x.get("price")))
+        price_val = _p2f(best.get("price"))
+        url = best.get("url", "#")
+        # First seen date for this price/url
+        best_seen = (
+            _find_best_seen_date(history, name, url, price_val) if history is not None else "?"
+        )
+        rows.append(
+            "<tr>"
+            f"<td class='border-t border-slate-700/50 px-4 py-3 text-sm text-slate-300'>{html.escape(name)}</td>"
+            f"<td class='border-t border-slate-700/50 px-4 py-3 font-semibold text-green-400'>{price_val:.2f}€</td>"
+            f"<td class='border-t border-slate-700/50 px-4 py-3'><a href='{html.escape(url)}' target='_blank' class='text-cyan-400 underline hover:text-cyan-300'>{get_site_label(url)}</a></td>"
+            f"<td class='border-t border-slate-700/50 px-4 py-3 text-xs text-slate-400'>{best_seen}</td>"
+            "</tr>"
+        )
+    if not rows:
+        return ""
+    disclaimer = "<div class='text-xs text-yellow-300/80 mt-2 mb-4'>⚠️ Ces kits ne sont pas inclus dans le total général et servent d'alternative regroupée.</div>"
+    table_html = [
+        "<div class='overflow-x-auto mb-12 mt-4'>",
+        "<h3 class='text-xl font-bold text-yellow-400 mb-4 text-center'>Upgrade Kits (Alternatives)</h3>",
+        "<table class='min-w-full glass-card rounded-xl shadow border border-slate-600 overflow-hidden'>",
+        "<thead><tr>"
+        "<th class='px-4 py-3 text-left text-xs font-semibold text-slate-200 bg-slate-900/70'>Kit</th>"
+        "<th class='px-4 py-3 text-left text-xs font-semibold text-slate-200 bg-slate-900/70'>Meilleur Prix</th>"
+        "<th class='px-4 py-3 text-left text-xs font-semibold text-slate-200 bg-slate-900/70'>Site</th>"
+        "<th class='px-4 py-3 text-left text-xs font-semibold text-slate-200 bg-slate-900/70'>Vu Le</th>"
+        "</tr></thead><tbody>",
+        *rows,
+        "</tbody></table>",
+        disclaimer,
+        "</div>",
+    ]
+    return "".join(table_html)
+
+
 def _should_skip_timestamp(timestamp) -> bool:
     if (
         timestamp is None
@@ -293,9 +390,15 @@ def _render_price_list(entries, name: str) -> str:
     items = []
     for entry in entries:
         norm_price = normalize_price(entry["price"], name)
+        # Ensure we don't double-append currency symbol if upstream value already contains it
+        if isinstance(norm_price, (int, float)):
+            price_str = f"{norm_price}"
+        else:
+            price_str = str(norm_price)
+        price_str = price_str.replace("€", "").strip()
         items.append(
             '<li class="price-item p-4 rounded-xl transition-all duration-300">'
-            f'<span class="font-bold text-green-400 text-lg">{norm_price}€</span> @ '
+            f'<span class="font-bold text-green-400 text-lg">{price_str}€</span> @ '
             f'<a href="{entry["url"]}" target="_blank" class="text-cyan-400 hover:text-cyan-300 underline transition-colors ml-2">{get_site_label(entry["url"])}</a>'
             "</li>"
         )
@@ -311,10 +414,15 @@ def _render_history_list(history_entries: pd.DataFrame, name: str) -> str:
         norm_price = normalize_price(h["Price"], name)
         if norm_price is None or (isinstance(norm_price, float) and math.isnan(norm_price)):
             continue
+        if isinstance(norm_price, (int, float)):
+            price_str = f"{norm_price}"
+        else:
+            price_str = str(norm_price)
+        price_str = price_str.replace("€", "").strip()
         ts_fmt = format_french_date_full(str(timestamp))
         lis.append(
             f'<li class="history-item mb-2 p-3 rounded-xl transition-all duration-300">{ts_fmt}: '
-            f'<span class="font-bold text-green-400">{norm_price}€</span> @ '
+            f'<span class="font-bold text-green-400">{price_str}€</span> @ '
             f'<a href="{h["URL"]}" target="_blank" class="text-cyan-400 hover:text-cyan-300 underline transition-colors ml-2">{get_site_label(h["URL"])}</a>'
             "</li>"
         )
@@ -343,7 +451,19 @@ def render_product_cards(product_prices, history, product_min_prices, products_m
             category = "Other"
 
         min_price_data = product_min_prices.get(name, {"timestamps": [], "prices": []})
-        best = min(entries, key=lambda x: float(x["price"]))
+
+        def _p2f(v):
+            if isinstance(v, (int, float)):
+                return float(v)
+            if isinstance(v, str):
+                s = v.replace("€", "").replace(",", ".").replace(" ", "").strip()
+                try:
+                    return float(s)
+                except Exception:
+                    return float("inf")
+            return float("inf")
+
+        best = min(entries, key=lambda x, _conv=_p2f: _conv(x["price"]))
         history_id = f"history-{abs(hash(name))}"
         html.append(
             '<div class="glass-card rounded-2xl shadow-2xl border border-slate-600 p-8 hover:shadow-cyan-500/10 transition-all duration-300">'
@@ -367,7 +487,7 @@ def render_product_cards(product_prices, history, product_min_prices, products_m
         html.append(
             '<div class="mb-6">'
             f'<span class="inline-block price-badge text-white font-semibold px-6 py-3 rounded-xl shadow-lg">'
-            f'💎 Meilleur prix: <span class="font-bold text-xl">{best["price"]}€</span> @ '
+            f'💎 Meilleur prix: <span class="font-bold text-xl">{str(best["price"]).replace("€", "").strip()}€</span> @ '
             f'<a href="{best["url"]}" target="_blank" class="underline hover:text-slate-200 transition-colors">{get_site_label(best["url"])}</a>'
             "</span></div>"
         )

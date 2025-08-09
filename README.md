@@ -1,9 +1,5 @@
 # 🛒 Price Scraper Project (2025)
 
-## Overview
-
-This project tracks prices for computer parts (or any products) across multiple e-commerce sites. It automatically finds the best price for each product, logs price history, and generates a modern HTML dashboard with graphs and tables. All logic is modular and easy to extend.
-
 ## Code Structure
 
 All HTML generation logic is now modularized:
@@ -25,12 +21,17 @@ To add new features or fix bugs, edit the relevant module. All scripts are auto-
 ### Refactored Output
 
 The generated HTML now includes:
+
 - Category summary table (cheapest product per category)
 - Total price history graph (Chart.js)
 - Product cards grid (all prices, best price, **toggleable** history)
 - Individual price history graphs for each product (Chart.js)
 - **Interactive UI**: Historical price sections are hidden by default with individual toggle buttons for each product
 - ⚠️ Upgrade Kits shown as alternatives and excluded from total calculations
+  - 🔧 Upgrade Kits now appear in a dedicated section consisting of: (1) a compact table listing each kit with best price / site / first-seen date, and (2) a multi-series price history chart below it.
+  - Kits are removed from the main summary table and the total price history computation.
+  - Single-point Upgrade Kit series display a visible dot (no line) until a second data point is collected.
+  - The upgrade kits chart height was reduced for a more compact layout.
 
 ### UI Features
 
@@ -47,9 +48,7 @@ The generated HTML now includes:
 - The “Show/Hide history” toggle is implemented inline as well; no external `static/` scripts are required.
 - The previous `static/toggleHistory.js` file has been removed to avoid 404s when serving a single file.
 
-# 🛒 Price Scraper Project (2025)
-
-## Overview
+## Overview (recap)
 
 This project tracks prices for computer parts (or any products) across multiple e-commerce sites. It automatically finds the best price for each product, logs price history, and generates a modern HTML dashboard with graphs and tables. All logic is modular and easy to extend.
 
@@ -110,7 +109,7 @@ The generated HTML now includes:
 - Product cards grid (all prices, best price, **toggleable** history)
 - Individual price history graphs for each product (Chart.js)
 - **Interactive UI**: Historical price sections are hidden by default with individual toggle buttons for each product
-- ⚠️ Upgrade Kits shown as alternatives and excluded from total calculations
+- ⚠️ Upgrade Kits shown as alternatives and excluded from total calculations (now rendered in their own table + compact multi-series chart, not counted in totals)
 
 ### Interactive UI Features
 
@@ -135,7 +134,7 @@ The generated HTML now includes:
 
 ### Pricing logic
 
-- "Upgrade Kit" category is treated as an alternative bundle. It's displayed in the summary table for comparison but is not included in the total row or in the total price history chart.
+- "Upgrade Kit" category is treated as an alternative bundle. It now has its own table (no total row) plus a dedicated chart and is not included in the main total row or the total price history chart.
 
 ## Configuration: excluded categories
 
@@ -197,6 +196,20 @@ Edit `database.conf` to configure the database:
 # Database type: "sqlite" or "csv"
 database_type=sqlite
 
+### 3. Generate HTML only (skip scraping)
+
+Rebuild the dashboard from existing database history without performing any network scraping:
+
+```bash
+python src/main.py --html-only --html-mode builder
+```
+
+Notes:
+
+- Combine with `--no-html` (without `--html-only`) if you only want scraping.
+- The HTML-only path reconstructs the latest known price per product URL from the DB and feeds it to the builder.
+- Works with both `--html-mode legacy` and `builder` (recommended: builder).
+
 # Cache settings
 cache_duration_hours=6
 failed_cache_duration_hours=24
@@ -235,6 +248,7 @@ Example `products.json`:
 ```
 
 Rules:
+
 1. `version` must be `1`.
 2. Each product needs `name`, `category`, and a non‑empty array of `urls`.
 3. URLs must start with http/https.
@@ -242,9 +256,9 @@ Rules:
 
 Add or edit products, then run the scraper; it will import new entries automatically.
 
-### 4. Run locally
+## Run locally
 
-#### Basic Usage
+### Basic Usage
 
 ```bash
 # Run (SQLite default). Automatically syncs products.json
@@ -254,7 +268,7 @@ python src/main.py
 python src/generate_html.py
 ```
 
-#### 🆕 Advanced Options
+### 🆕 Advanced Options
 
 ```bash
 # Only scrape products with no data in last 48 hours
@@ -270,7 +284,7 @@ python src/main.py --config my_database.conf
 python src/main.py --no-html
 ```
 
-#### 🆕 Caching Benefits (SQLite only)
+### 🆕 Caching Benefits (SQLite only)
 
 - Successful prices cached for 6 hours (configurable)
 - Failed attempts cached for 24 hours with exponential backoff
@@ -293,6 +307,7 @@ Use full canonical TopAchat URLs inside each product's `urls` list in `products.
 `https://www.topachat.com/pages/detail2_cat_est_micro_puis_rubrique_est_w_ssd_puis_ref_est_in20023645.html`
 
 **Recommended JSON Workflow:**
+
 1. (Optional) Backup DB: `cp data/scraper.db data/scraper_backup_$(date +%Y%m%d).db`
 2. Edit `products.json` (add / remove URLs)
 3. Run `python src/main.py` (imports new products/urls)
