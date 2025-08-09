@@ -7,12 +7,16 @@ that returns the complete HTML string so callers can write it wherever needed.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
-import json
+from typing import Dict, List
 import pandas as pd
-from .normalize import normalize_price, get_category
 from .render import render_summary_table, render_product_cards
-from utils import format_french_date
+from .data_prep import (
+    compute_category_best,
+    extract_timestamps,
+    build_min_series,
+    build_total_history,
+)
+from .chart_config import chart_config_json
 
 
 @dataclass
@@ -35,118 +39,7 @@ class SingleFileHTMLBuilder:
         "#ec4899",
     ]
 
-    def normalize_and_filter_prices(self, entries: List[Dict], name: str) -> List[Dict]:
-        ok: List[Dict] = []
-        for e in entries:
-            try:
-                norm = normalize_price(e["price"], name)
-                val = float(norm)
-                if 0 < val < 5000:
-                    ok.append({"price": norm, "url": e["url"]})
-            except Exception:
-                continue
-        return ok
-
-    def compute_category_best(
-        self, product_prices: Dict[str, List[Dict]], products_meta: Dict[str, Dict]
-    ) -> Tuple[Dict[str, Dict], Dict[str, List[Dict]]]:
-        category_best: Dict[str, Dict] = {}
-        for name, entries in product_prices.items():
-            valid_entries = self.normalize_and_filter_prices(entries, name)
-            if not valid_entries:
-                continue
-            best = min(valid_entries, key=lambda x: float(x["price"]))
-            meta = products_meta.get(name, {})
-            cat = meta.get("category") or get_category(name, best["url"])
-            if cat == "Upgrade Kit":
-                product_prices[name] = valid_entries
-                continue
-            if cat not in category_best or float(best["price"]) < float(
-                category_best[cat]["price"]
-            ):
-                category_best[cat] = {"name": name, "price": best["price"], "url": best["url"]}
-            product_prices[name] = valid_entries
-        return category_best, product_prices
-
-    def extract_timestamps(self, history: pd.DataFrame) -> List[str]:
-        ts_col = history["Timestamp_ISO"] if "Timestamp_ISO" in history.columns else history["Date"]
-        return sorted(
-            {str(ts) for ts in ts_col if isinstance(ts, str) and ts.strip() and ts != "nan"}
-        )
-
-    def build_min_series(
-        self, category_best: Dict[str, Dict], history: pd.DataFrame
-    ) -> Dict[str, ProductMinSeries]:
-        result: Dict[str, ProductMinSeries] = {}
-        for cat, info in category_best.items():
-            name = info["name"]
-            ph = history[history["Product_Name"] == name]
-            ts_col = "Timestamp_ISO" if "Timestamp_ISO" in ph.columns else "Date"
-            ph = ph.sort_values(by=ts_col)
-            prices: List[float] = []
-            ts_labels: List[str] = []
-            for ts, group in ph.groupby(ts_col):
-                vals = [
-                    float(normalize_price(r.Price, name))
-                    for _, r in group.iterrows()
-                    if 0 < float(normalize_price(r.Price, name)) < 5000
-                ]
-                if vals:
-                    prices.append(min(vals))
-                    ts_labels.append(ts)
-            result[name] = ProductMinSeries(ts_labels, prices)
-        return result
-
-    def build_total_history(
-        self, series: Dict[str, ProductMinSeries], timeline: List[str]
-    ) -> List[Dict]:
-        mapped = {name: dict(zip(data.timestamps, data.prices)) for name, data in series.items()}
-        absolute_best = {name: (min(p.values()) if p else 0) for name, p in mapped.items()}
-        total_history: List[Dict] = []
-        for i, ts in enumerate(timeline):
-            total = 0.0
-            for name, ts_prices in mapped.items():
-                if i == len(timeline) - 1:
-                    total += absolute_best.get(name, 0)
-                else:
-                    val = ts_prices.get(ts)
-                    if val is not None:
-                        total += val
-            total_history.append({"timestamp": ts, "total": round(total, 2)})
-        return total_history
-
-    def _chart_datasets(self, series: Dict[str, ProductMinSeries], total_history: List[Dict]):
-        datasets = []
-        for idx, (name, data) in enumerate(series.items()):
-            if data.timestamps and data.prices:
-                datasets.append(
-                    {
-                        "label": name,
-                        "data": data.prices,
-                        "fill": False,
-                        "borderColor": self.COLOR_PALETTE[idx % len(self.COLOR_PALETTE)],
-                        "backgroundColor": self.COLOR_PALETTE[idx % len(self.COLOR_PALETTE)],
-                        "borderWidth": 2,
-                        "tension": 0.4,
-                        "pointRadius": 0,
-                        "hidden": False,
-                    }
-                )
-        datasets.append(
-            {
-                "label": "Prix Total (€)",
-                "data": [x["total"] for x in total_history],
-                "fill": False,
-                "borderColor": "#10b981",
-                "backgroundColor": "#059669",
-                "borderWidth": 3,
-                "tension": 0.4,
-                "pointRadius": 3,
-                "pointHoverRadius": 6,
-                "order": 1,
-            }
-        )
-        return datasets
+    # Data prep logic is now in htmlgen.data_prep
 
     def _evolution_html(self, total_history: List[Dict]) -> str:
         if len(total_history) < 2:
@@ -166,54 +59,20 @@ class SingleFileHTMLBuilder:
         history: pd.DataFrame,
         products_meta: Dict[str, Dict],
     ) -> str:
-        category_best, normalized_prices = self.compute_category_best(product_prices, products_meta)
-        timeline = self.extract_timestamps(history)
-        series = self.build_min_series(category_best, history)
-        total_history = self.build_total_history(series, timeline)
-        datasets = self._chart_datasets(series, total_history)
-        formatted_labels = [format_french_date(x["timestamp"]) for x in total_history]
-        chart_config = {
-            "type": "line",
-            "data": {"labels": formatted_labels, "datasets": datasets},
-            "options": {
-                "responsive": True,
-                "plugins": {
-                    "legend": {
-                        "display": True,
-                        "labels": {"color": "#e2e8f0", "font": {"size": 12}},
-                    },
-                    "title": {
-                        "display": True,
-                        "text": "Historique du prix total",
-                        "color": "#06b6d4",
-                        "font": {"size": 16, "weight": "bold"},
-                    },
-                },
-                "scales": {
-                    "x": {
-                        "ticks": {"color": "#94a3b8", "font": {"size": 10}},
-                        "grid": {"color": "rgba(148, 163, 184, 0.1)"},
-                    },
-                    "y": {
-                        "beginAtZero": False,
-                        "ticks": {"color": "#94a3b8", "font": {"size": 10}},
-                        "grid": {"color": "rgba(148, 163, 184, 0.1)"},
-                    },
-                },
-                "elements": {
-                    "point": {"hoverBackgroundColor": "#06b6d4"},
-                    "line": {"borderCapStyle": "round"},
-                },
-            },
-        }
-        chart_json = json.dumps(chart_config)
+        category_best, normalized_prices = compute_category_best(product_prices, products_meta)
+        timeline = extract_timestamps(history)
+        series = build_min_series(category_best, history)
+        total_history = build_total_history(series, timeline)
+        chart_json = chart_config_json(series, total_history, self.COLOR_PALETTE)
+
         evo_html = self._evolution_html(total_history)
-        name_category = {}
+        name_category: Dict[str, Dict] = {}
         for cat, info in category_best.items():
             name_category[info["name"]] = {"category": cat}
         for name, meta in products_meta.items():
             if name not in name_category:
                 name_category[name] = {"category": meta.get("category", "Other")}
+
         html_parts = [
             "<!DOCTYPE html>",
             '<html lang="fr">',
@@ -262,6 +121,7 @@ class SingleFileHTMLBuilder:
             '<div class="chart-container mt-8 mb-8"><h2 class="text-2xl font-bold text-center text-cyan-400 mb-6">Historique du prix total</h2><canvas id="total_price_chart" height="150"></canvas>'
             f"<script>const ctx=document.getElementById('total_price_chart').getContext('2d'); new Chart(ctx, {chart_json});</script></div>",
         ]
+
         html_parts.append(
             render_summary_table(self._build_category_products(normalized_prices), history)
         )
