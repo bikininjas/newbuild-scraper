@@ -5,6 +5,7 @@ import time
 import logging
 import argparse
 from pathlib import Path
+from types import SimpleNamespace
 from utils import setup_logging  # From utils package
 
 # Dynamic import of scraping functions from top-level scraper.py (not a package export)
@@ -25,9 +26,11 @@ except Exception as _e:  # pragma: no cover
 from sites.config import get_site_selector
 from alerts import send_discord_alert
 from generate_html import generate_html
-from scraper.persistence.sqlite import DatabaseManager
+from scraper.persistence.sqlite import DatabaseManager as LocalSQLiteManager
 from database import DatabaseConfig  # keep config from legacy package
+from database.sqlitecloud_manager import SQLiteCloudManager
 from scraper.catalog import import_from_json, ProductValidationError
+from scraper.persistence import repositories as repo
 
 # Default domains for which debug logging is enabled
 DEFAULT_DEBUG_DOMAINS = ["topachat.com"]
@@ -212,10 +215,19 @@ def setup_database_manager(args):
     else:
         db_config = DatabaseConfig.from_env()
 
-    # Force SQLite as the only supported database type
-    db_config.database_type = "sqlite"
-
-    db_manager = DatabaseManager(db_config)
+    # Select backend based on configured type
+    if db_config.database_type == "sqlitecloud" and db_config.sqlitecloud_connection:
+        try:
+            db_manager = SQLiteCloudManager(db_config)
+        except Exception as e:
+            logging.error(
+                f"Failed to initialize SQLiteCloud backend ({e}); falling back to local SQLite"
+            )
+            db_config.database_type = "sqlite"
+            db_manager = LocalSQLiteManager(db_config)
+    else:
+        db_config.database_type = "sqlite"  # normalize label
+        db_manager = LocalSQLiteManager(db_config)
     logging.info(f"Using {db_config.database_type} database backend")
     return db_manager, db_config
 
@@ -229,8 +241,11 @@ def get_products_to_scrape(args, db_manager):
     else:
         pairs = []
         for product in db_manager.get_products():
-            for url_entry in db_manager.get_product_urls(product.name):
-                pairs.append((product.name, url_entry.url))
+            # Support both object (local) and dict (cloud) representations
+            pname = getattr(product, "name", None) or product.get("name")
+            for url_entry in db_manager.get_product_urls(pname):
+                u = getattr(url_entry, "url", None) or url_entry.get("url")
+                pairs.append((pname, u))
     if not pairs:
         logging.info("No products need scraping, exiting")
         return None
@@ -281,116 +296,82 @@ def save_scraping_results(updated_rows, db_manager, db_config):
             logging.info("Data exported to CSV files for GitHub Actions compatibility")
 
 
-def main():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Product price scraper")
-    parser.add_argument("--no-html", action="store_true", help="Do not generate output.html")
-    parser.add_argument(
+    a = parser.add_argument
+    a("--no-html", action="store_true", help="Do not generate output.html")
+    a(
         "--debug-domains",
         type=str,
         nargs="*",
         default=DEFAULT_DEBUG_DOMAINS,
         help="Domains for which to enable debug logging (default: topachat.com)",
     )
-    parser.add_argument(
+    a(
         "--new-products-only",
         action="store_true",
         help="Only scrape products with no entries in the last 48 hours",
     )
-    parser.add_argument(
+    a(
         "--max-age-hours",
         type=int,
         default=48,
         help="Maximum age in hours for --new-products-only (default: 48)",
     )
-    parser.add_argument(
-        "--config",
-        type=str,
-        default="database.conf",
-        help="Path to database configuration file",
-    )
-    parser.add_argument(
+    a("--config", type=str, default="database.conf", help="Path to database configuration file")
+    a(
         "--html-mode",
         choices=["legacy", "builder"],
         default=os.environ.get("HTML_MODE", "legacy"),
         help="HTML generation mode (legacy or builder). Can also set env HTML_MODE.",
     )
-    parser.add_argument(
+    a(
         "--force-all",
         action="store_true",
         help="Ignore cache and scrape all URLs (overrides --new-products-only).",
     )
-    parser.add_argument(
+    a(
         "--html-only",
         action="store_true",
         help="Skip scraping; generate HTML from existing database history only.",
     )
-    args = parser.parse_args()
+    return parser.parse_args(argv)
 
-    # Setup database
-    db_manager, db_config = setup_database_manager(args)
 
-    def import_products_if_any():
-        if not Path(JSON_PRODUCTS_FILE).exists():
-            return
-        try:
-            added_p, added_u = import_from_json(db_manager, JSON_PRODUCTS_FILE)
-            if added_p or added_u:
-                logging.info(
-                    f"[JSON] Imported {added_p} new products and {added_u} new urls from {JSON_PRODUCTS_FILE}"
-                )
-            else:
-                logging.info("[JSON] No new products/urls from JSON (already in DB)")
-        except ProductValidationError as e:
-            logging.error(f"[JSON] Validation error: {e}")
-        except Exception as e:  # pragma: no cover - unexpected
-            logging.error(f"[JSON] Unexpected import error: {e}")
-
-    import_products_if_any()
-
-    if args.html_only:
-        logging.info("--html-only: skipping scraping and using existing history")
-        history = db_manager.get_price_history()
-        if history is None or history.empty:
-            logging.warning("No history available; generated HTML may be empty")
-        # Build product prices from latest entries per product+URL
-        product_prices = {}
-        if history is not None and not history.empty:
-            ts_col = None
-            for c in ["Timestamp_ISO", "Date", "timestamp"]:
-                if c in history.columns:
-                    ts_col = c
-                    break
-            if ts_col is None:
-                ts_col = (
-                    "Timestamp_ISO" if "Timestamp_ISO" in history.columns else history.columns[0]
-                )
-            # Ensure ordering so last row is most recent
-            if ts_col in history.columns:
-                history_sorted = history.sort_values(by=ts_col)
-            else:
-                history_sorted = history
-            for (pname, url), g in history_sorted.groupby(["Product_Name", "URL"]):
-                last = g.iloc[-1]
-                product_prices.setdefault(pname, []).append({"url": url, "price": last["Price"]})
-        # Products metadata
-        products_meta = {}
-        for product in db_manager.get_products():
-            urls = [u.url for u in db_manager.get_product_urls(product.name)]
-            products_meta[product.name] = {"category": product.category, "urls": urls}
-        if not args.no_html:
-            generate_html(product_prices, history, mode=args.html_mode, products_meta=products_meta)
-        logging.info("HTML-only generation completed")
+def import_products_if_any(db_manager):
+    if not Path(JSON_PRODUCTS_FILE).exists():
         return
+    try:
+        added_p, added_u = import_from_json(db_manager, JSON_PRODUCTS_FILE)
+        if added_p or added_u:
+            logging.info(
+                f"[JSON] Imported {added_p} new products and {added_u} new urls from {JSON_PRODUCTS_FILE}"
+            )
+        else:
+            logging.info("[JSON] No new products/urls from JSON (already in DB)")
+    except ProductValidationError as e:
+        logging.error(f"[JSON] Validation error: {e}")
+    except Exception as e:  # pragma: no cover - unexpected
+        logging.error(f"[JSON] Unexpected import error: {e}")
 
-    # Standard scrape flow
-    # Get products to scrape
+
+def build_products_meta(db_manager):
+    meta = {}
+    for product in db_manager.get_products():
+        pname = getattr(product, "name", None) or product.get("name")
+        pcat = getattr(product, "category", None) or product.get("category")
+        urls = [getattr(u, "url", None) or u.get("url") for u in db_manager.get_product_urls(pname)]
+        meta[pname] = {"category": pcat, "urls": urls}
+    return meta
+
+
+def perform_scrape(args, db_manager, db_config):
     if args.force_all:
         args.new_products_only = False
         logging.info("--force-all specified: scraping every product URL (ignoring cache)")
     products = get_products_to_scrape(args, db_manager)
     if products is None:
-        return
-
+        return None
     if args.force_all and db_config.database_type == "sqlite":
         original_is_cached = db_manager.is_url_cached
         db_manager.is_url_cached = lambda url: False
@@ -398,20 +379,78 @@ def main():
         db_manager.is_url_cached = original_is_cached
     else:
         product_prices, updated_rows = scrape_products(products, args, db_manager, db_config)
-
     save_scraping_results(updated_rows, db_manager, db_config)
     history = db_manager.get_price_history()
+    return SimpleNamespace(product_prices=product_prices, history=history)
 
+
+def main(argv=None):
+    args = parse_args(argv)
+    db_manager, db_config = setup_database_manager(args)
+    import_products_if_any(db_manager)
+    if args.html_only:
+        run_html_only(args, db_manager)
+        return
+    result = perform_scrape(args, db_manager, db_config)
+    if result is None:
+        return
     if not args.no_html:
-        products_meta = {}
-        for product in db_manager.get_products():
-            urls = [u.url for u in db_manager.get_product_urls(product.name)]
-            products_meta[product.name] = {"category": product.category, "urls": urls}
-        generate_html(product_prices, history, mode=args.html_mode, products_meta=products_meta)
-
+        products_meta = build_products_meta(db_manager)
+        generate_html(
+            result.product_prices, result.history, mode=args.html_mode, products_meta=products_meta
+        )
     logging.info("Scraping completed successfully")
+    report_malfunctioning_links(db_manager)
 
     # CSV export & history CSV management removed during CSV purge.
+
+
+def report_malfunctioning_links(db_manager):
+    try:
+        malformed = repo.malfunctioning_links(db_manager, include_resolved=False)
+        print("\n=== MALFUNCTIONING LINKS REPORT ===")
+        if not malformed:
+            print("No malfunctioning links recorded.")
+            return
+        # Columns: Product, URL, Error Type, Occurrences, Last Detected, Message
+        header = f"{'Product':30} {'Error':20} {'Occur':>5} {'Last Detected':20} URL"
+        print(header)
+        print("-" * len(header))
+        for row in malformed:
+            print(
+                f"{row.get('product_name','')[:29]:30} {row.get('error_type','')[:19]:20} {row.get('occurrences',0):>5} {row.get('last_detected','')[:19]:20} {row.get('url','')}"
+            )
+        print("(Deactivate or fix these URLs; they are excluded from scraping until resolved.)")
+    except Exception as e:  # pragma: no cover
+        logging.error(f"Failed to generate malfunctioning links report: {e}")
+
+
+def run_html_only(args, db_manager):
+    """Generate HTML without scraping (used for --html-only)."""
+    logging.info("--html-only: skipping scraping and using existing history")
+    history = db_manager.get_price_history()
+    if history is None or history.empty:
+        logging.warning("No history available; generated HTML may be empty")
+    product_prices = {}
+    if history is not None and not history.empty:
+        ts_col = next(
+            (c for c in ["Timestamp_ISO", "Date", "timestamp"] if c in history.columns),
+            history.columns[0],
+        )
+        history_sorted = history.sort_values(by=ts_col) if ts_col in history.columns else history
+        for (pname, url), g in history_sorted.groupby(["Product_Name", "URL"]):
+            last = g.iloc[-1]
+            product_prices.setdefault(pname, []).append({"url": url, "price": last["Price"]})
+    products_meta = {}
+    for product in db_manager.get_products():
+        pname = getattr(product, "name", None) or product.get("name")
+        pcat = getattr(product, "category", None) or product.get("category")
+        urls = [getattr(u, "url", None) or u.get("url") for u in db_manager.get_product_urls(pname)]
+        products_meta[pname] = {"category": pcat, "urls": urls}
+    if not args.no_html:
+        generate_html(product_prices, history, mode=args.html_mode, products_meta=products_meta)
+    logging.info("HTML-only generation completed")
+    report_malfunctioning_links(db_manager)
 
 
 if __name__ == "__main__":

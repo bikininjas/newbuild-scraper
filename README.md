@@ -154,6 +154,29 @@ EXCLUDED_CATEGORIES: set[str] = {"Upgrade Kit", "Another Alt Category"}
 - If a product is missing from the price history at a timestamp, it is excluded from the sum for that timestamp.
 - The UI and CSV parsing are robust, but edge cases (e.g., malformed CSV, missing columns) may need more error handling.
 - ✅ **RESOLVED**: Cognitive complexity warnings have been addressed through code refactoring
+- 🆕 **Malfunctioning Links Tracking**: URLs that consistently fail price extraction (e.g. selector changes, layout shifts) are now persisted in a dedicated `malfunctioning_links` SQLite table. They are automatically deactivated (removed from active scraping rotation) and listed in an end-of-run console report (also shown for `--html-only`). Use this to fix / update `products.json` or investigate site changes.
+
+### Malfunctioning Links Report
+
+Every run (including `--html-only`) prints a section:
+
+```text
+=== MALFUNCTIONING LINKS REPORT ===
+Product                        Error                 Occur Last Detected       URL
+----------------------------------------------------------------------------------
+CPU XYZ                        price_parse_failed       3 2025-08-09 12:41    https://.../broken
+```
+
+Behaviour:
+
+1. First failure logs the URL with `occurrences=1` and deactivates it (so future scrapes skip it).
+2. Repeated failures increment `occurrences` and update `last_detected`.
+3. Table columns: product name, error type, occurrences, last detected timestamp, URL.
+4. Error types currently: `price_parse_failed` (no price extracted), reserved for future: `structure_changed`, `unknown`.
+5. Data lives in SQLite table `malfunctioning_links` (schema includes notes/resolved flags for future tooling).
+
+To re-enable a fixed URL, either (a) manually update/repair it in `products.json` and re-import, or (b) clear its row / mark resolved + set `urls.active=1` via SQLite.
+
 
 ## How to Use
 
@@ -210,13 +233,13 @@ Notes:
 - The HTML-only path reconstructs the latest known price per product URL from the DB and feeds it to the builder.
 - Works with both `--html-mode legacy` and `builder` (recommended: builder).
 
-# Cache settings
+\n#### Cache settings\n
 cache_duration_hours=6
 failed_cache_duration_hours=24
 
-# Enable automatic CSV to SQLite migration
+\n#### Enable automatic CSV to SQLite migration\n
 enable_auto_migration=true
-```
+\n```ini
 
 ### 3. Define your product list (JSON)
 
@@ -337,3 +360,30 @@ Legacy CSV steps are deprecated; avoid mixing both to prevent confusion.
   - Install dev deps and set up hooks: `pip install pre-commit && pre-commit install`
   - Format everything on demand: `pre-commit run --all-files`
 - Basic editor settings are provided via `.editorconfig`.
+
+## 🛰️ Remote Backend: SQLiteCloud
+
+You can run the scraper against a remote SQLiteCloud database so that CI and local runs share the same unified history without committing large CSV snapshots.
+
+Environment variables:
+
+```bash
+export DB_TYPE=sqlitecloud
+export SQLITECLOUD_SCRAPER_CONNECTION_STRING="sqlitecloud://<user>:<password>@<host>/<db>?ssl=true"
+```
+
+Then run the scraper exactly as before:
+
+```bash
+python src/main.py --new-products-only
+```
+
+Notes:
+
+- Schema creation is idempotent and performed automatically on first connection.
+- Local URL caching is intentionally disabled for the cloud backend (to simplify state); use `--new-products-only` to limit work.
+- If the cloud connection fails, the code logs an error and transparently falls back to local `data/scraper.db`.
+- Product / URL objects are lightweight dicts in cloud mode; the code accommodates both representations.
+- Malfunctioning link tracking works identically in both modes.
+
+Planned improvements (future): enable cache abstraction for cloud + optional resiliency retries.
