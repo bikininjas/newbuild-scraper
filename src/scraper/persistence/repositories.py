@@ -52,3 +52,20 @@ def resolve_issue(db: DatabaseManager, issue_id: int):
 
 def auto_handle_critical(db: DatabaseManager, auto_remove: bool = True):
     return db.auto_handle_critical_issues(auto_remove=auto_remove)
+
+
+# Issue creation / lookup
+
+
+def log_issue(
+    db: DatabaseManager,
+    product_id: int,
+    url: str,
+    issue_type: str,
+    **meta,
+):
+    return db.log_product_issue(product_id=product_id, url=url, issue_type=issue_type, **meta)
+
+
+def product_by_url(db: DatabaseManager, url: str):
+    return db.get_product_by_url(url)

@@ -224,6 +224,62 @@ class DatabaseManager:  # Retain name for compatibility
                 rows = conn.execute(q, (1 if resolved else 0,)).fetchall()
             return [dict(r) for r in rows]
 
+    # --- issue logging & lookup (ported from legacy manager) --- #
+    def log_product_issue(
+        self,
+        product_id: int,
+        url: str,
+        issue_type: str,
+        expected_name: str | None = None,
+        actual_name: str | None = None,
+        error_message: str | None = None,
+        http_status_code: int | None = None,
+    ):
+        with self._get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO product_issues
+                (product_id, url, issue_type, expected_name, actual_name, error_message, http_status_code)
+                VALUES (?,?,?,?,?,?,?)
+                """,
+                (
+                    product_id,
+                    url,
+                    issue_type,
+                    expected_name,
+                    actual_name,
+                    error_message,
+                    http_status_code,
+                ),
+            )
+            conn.commit()
+        self.logger.info(f"Logged {issue_type} issue for product {product_id}: {url}")
+
+    def get_product_by_url(self, url: str) -> Optional[Product]:
+        with self._get_connection() as conn:
+            row = conn.execute(
+                """
+                SELECT p.id, p.name, p.category, p.created_at, p.updated_at
+                FROM products p
+                JOIN urls u ON p.id = u.product_id
+                WHERE u.url = ?
+                """,
+                (url,),
+            ).fetchone()
+            if not row:
+                return None
+            return Product(
+                id=row["id"],
+                name=row["name"],
+                category=row["category"],
+                created_at=(
+                    datetime.fromisoformat(row["created_at"]) if row["created_at"] else None
+                ),
+                updated_at=(
+                    datetime.fromisoformat(row["updated_at"]) if row["updated_at"] else None
+                ),
+            )
+
     def resolve_product_issue(self, issue_id: int):
         with self._get_connection() as conn:
             conn.execute("UPDATE product_issues SET resolved=1 WHERE id=?", (issue_id,))
