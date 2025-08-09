@@ -12,4 +12,4 @@ repos:
         entry: python scripts/validate_products_json.py
         language: system
         pass_filenames: false
-        files: ^products\.json$
+        always_run: true
