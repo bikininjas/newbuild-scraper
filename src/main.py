@@ -11,7 +11,7 @@ from sites.config import get_site_selector
 from alerts import send_discord_alert
 from generate_html import generate_html
 from database import DatabaseManager, DatabaseConfig
-from json_products import import_from_json, ProductValidationError
+from scraper.catalog import import_from_json, ProductValidationError
 
 # Default domains for which debug logging is enabled
 DEFAULT_DEBUG_DOMAINS = ["topachat.com"]
