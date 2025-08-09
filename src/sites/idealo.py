@@ -13,6 +13,7 @@ from playwright.sync_api import Page
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 from typing import Dict, Optional, List
+from scraper.persistence import repositories as repo
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +172,7 @@ def check_product_mismatch(page: Page, original_url: str, db_manager=None) -> bo
     # Get product info for database logging
     product = None
     if db_manager:
-        product = db_manager.get_product_by_url(original_url)
+        product = repo.product_by_url(db_manager, original_url)
 
     # Check brand mismatch
     expected_brand = expected["brand"]
@@ -184,7 +185,8 @@ def check_product_mismatch(page: Page, original_url: str, db_manager=None) -> bo
 
         # Log to database if available
         if db_manager and product:
-            db_manager.log_product_issue(
+            repo.log_issue(
+                db_manager,
                 product_id=product.id,
                 url=original_url,
                 issue_type="name_mismatch",
@@ -224,7 +226,8 @@ def check_product_mismatch(page: Page, original_url: str, db_manager=None) -> bo
 
             # Log to database if available
             if db_manager and product:
-                db_manager.log_product_issue(
+                repo.log_issue(
+                    db_manager,
                     product_id=product.id,
                     url=original_url,
                     issue_type="name_mismatch",

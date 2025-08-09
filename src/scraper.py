@@ -12,6 +12,7 @@ from bs4 import BeautifulSoup
 from playwright.sync_api import sync_playwright
 
 from sites.config import SITE_SELECTORS, DEFAULT_SELECTORS, is_site_supported
+from scraper.persistence import repositories as repo
 from sites.handler import (
     clean_url_for_site,
     handle_site_specific_page_setup,
@@ -47,10 +48,11 @@ def get_price_requests(url, site_selectors, db_manager=None):
 
             # Log HTTP errors to database if available
             if db_manager and resp.status_code in [404, 403, 500, 503]:
-                product = db_manager.get_product_by_url(url)
+                product = repo.product_by_url(db_manager, url)
                 if product:
                     error_type = "404_error" if resp.status_code == 404 else "scrape_error"
-                    db_manager.log_product_issue(
+                    repo.log_issue(
+                        db_manager,
                         product_id=product.id,
                         url=url,
                         issue_type=error_type,
@@ -77,9 +79,10 @@ def get_price_requests(url, site_selectors, db_manager=None):
 
         # Log general scraping errors to database if available
         if db_manager:
-            product = db_manager.get_product_by_url(url)
+            product = repo.product_by_url(db_manager, url)
             if product:
-                db_manager.log_product_issue(
+                repo.log_issue(
+                    db_manager,
                     product_id=product.id,
                     url=url,
                     issue_type="scrape_error",
@@ -197,9 +200,10 @@ def get_price_playwright(url, site_selectors, db_manager=None):
 
                 # Log anti-bot detection to database if available
                 if db_manager:
-                    product = db_manager.get_product_by_url(url)
+                    product = repo.product_by_url(db_manager, url)
                     if product:
-                        db_manager.log_product_issue(
+                        repo.log_issue(
+                            db_manager,
                             product_id=product.id,
                             url=url,
                             issue_type="anti_bot",
